@@ -6,8 +6,32 @@ from functools import wraps
 from datetime import datetime
 
 log = logging.getLogger("elfakgis")
-UPLOAD, OUTPUT, USERS_FILE = "uploads", "outputs", "users.json"
-DEM_CATALOG_DIR = os.environ.get("DEM_CATALOG_DIR", "dem_catalog")
+
+
+def _project_root():
+    """Nearest ancestor containing app.py + templates/.
+
+    Data dirs MUST be absolute: Flask's send_from_directory resolves relative
+    paths against app.root_path (the elfakgis/ package dir since the split),
+    while all file writes use the process CWD. Absolute anchored paths keep
+    reads and writes in the same place on every server/gunicorn layout.
+    """
+    d = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(5):
+        if (os.path.isfile(os.path.join(d, "app.py"))
+                and os.path.isdir(os.path.join(d, "templates"))):
+            return d
+        d = os.path.dirname(d)
+    return os.getcwd()
+
+
+_PROJECT_ROOT = _project_root()
+
+UPLOAD = os.path.join(_PROJECT_ROOT, "uploads")
+OUTPUT = os.path.join(_PROJECT_ROOT, "outputs")
+USERS_FILE = os.path.join(_PROJECT_ROOT, "users.json")
+_dem = os.environ.get("DEM_CATALOG_DIR", "dem_catalog")
+DEM_CATALOG_DIR = _dem if os.path.isabs(_dem) else os.path.join(_PROJECT_ROOT, _dem)
 GITHUB_DEM_BASE = os.environ.get(
     "GITHUB_DEM_BASE",
     "https://raw.githubusercontent.com/1ravikafle-glitch/ElfakGISProStudio/main/dem_catalog"

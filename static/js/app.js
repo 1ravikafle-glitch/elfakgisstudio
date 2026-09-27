@@ -427,6 +427,68 @@
             }
         }
 
+        // ── Time-based progress (fills the SSE blind window) ──
+        // The pipeline POST blocks until the run finishes, so the SSE stream
+        // can only replay buffered events *after* completion (stuck-at-5% then
+        // jump-to-100%). While awaiting the response, ease the bar 5% → 75%
+        // cap using per-module learned durations, then hold until the server
+        // confirms — only then show 100%.
+        const ProgAnim = (() => {
+            const CAP = 75, MIN = 5;
+            const DEFAULTS = {A:25000,B:25000,C:40000,D:45000,E:90000,F:150000,G:60000,H:240000};
+            let timer = null, t0 = 0, est = 45000, msg = '';
+            const key = m => `elfak-est-${m}`;
+            function getEst(m) {
+                try {
+                    const h = JSON.parse(localStorage.getItem(key(m)) || '[]');
+                    if (h.length) return Math.max(8000, h.reduce((a,b)=>a+b,0)/h.length);
+                } catch (_) {}
+                return DEFAULTS[m] || 45000;
+            }
+            function start(m, startMsg) {
+                stop();
+                msg = startMsg || 'Processing…';
+                t0 = Date.now(); est = getEst(m);
+                timer = setInterval(() => {
+                    const el = Date.now() - t0;
+                    const pct = MIN + (CAP - MIN) * (1 - Math.exp(-el / (est * 0.55)));
+                    const eta = el < est ? ` · ~${Math.max(1, Math.round((est - el) / 1000))}s left`
+                                         : ' · finishing…';
+                    setProgress('Processing…', msg + eta, Math.round(Math.min(pct, CAP)), false);
+                }, 500);
+            }
+            function stop() { if (timer) { clearInterval(timer); timer = null; } }
+            function finish(m) {
+                const dur = Date.now() - (t0 || Date.now());
+                stop();
+                try {
+                    const h = JSON.parse(localStorage.getItem(key(m)) || '[]');
+                    if (dur > 1000) { h.push(dur); while (h.length > 5) h.shift(); }
+                    localStorage.setItem(key(m), JSON.stringify(h));
+                } catch (_) {}
+            }
+            return { start, stop, finish };
+        })();
+
+        // ── Preview image failure → visible message + retry (never silent) ──
+        function previewImgError(img, runId, file) {
+            img.style.display = 'none';
+            const em = document.getElementById('empty-msg');
+            if (em) {
+                em.style.display = 'block';
+                em.innerHTML = `⚠️ Preview image failed to load (${file}). ` +
+                    `The run files may still be in <a href="${BASE}/download/${runId}">the ZIP download</a>. ` +
+                    `<button id="prev-retry" class="btn-sm">↻ Retry preview</button>`;
+                const rb = document.getElementById('prev-retry');
+                if (rb) rb.onclick = () => {
+                    em.style.display = 'none';
+                    img.style.display = 'block';
+                    img.src = `${BASE}/outputs/${runId}/${file}?t=${Date.now()}`;
+                };
+            }
+            setProgress('Warning', `Map files ready, but ${file} could not be displayed.`, 100, false);
+        }
+
         // ── SSE with ETA ──────────────────────────────────────────────────
         function startSSE(runId) {
             const startTime = Date.now();
@@ -515,6 +577,7 @@
 
             document.getElementById('run-btn').disabled = true;
             setProgress('Processing…', 'Starting pipeline…', 5);
+            ProgAnim.start(activeModule, 'Starting pipeline…');
             const fd = new FormData();
             fd.append('file', file);
             fd.append('module', activeModule);
@@ -552,6 +615,7 @@
             if (!dFile) { alert('Upload a DEM GeoTIFF file.'); return; }
             document.getElementById('run-btn').disabled = true;
             setProgress('Processing…', 'Starting Group F…', 5);
+            ProgAnim.start('F', 'Starting Group F…');
             const fd = new FormData();
             fd.append('file', bFile);
 
@@ -611,6 +675,7 @@
             const zone = document.getElementById('zone').value;
             document.getElementById('run-btn').disabled = true;
             setProgress('Processing…', 'Starting Group G…', 5);
+            ProgAnim.start('G', 'Starting Group G…');
             document.getElementById('g-result-box').classList.remove('visible');
 
             const fd = new FormData();
@@ -627,6 +692,7 @@
 
             try {
                 const data = await fetchJSON(`${BASE}/run_g`, { method: 'POST', body: fd });
+                ProgAnim.finish('G');
                 if (data.error) throw new Error(data.error);
                 currentRunId = data.run_id;
                 startSSE(data.run_id);
@@ -634,6 +700,7 @@
                 const img = document.getElementById('out-img');
                 img.onload = () => { img.style.display = 'block';
                     document.getElementById('empty-msg').style.display = 'none'; };
+                img.onerror = () => previewImgError(img, data.run_id, 'output.png');
                 img.src = `${BASE}/outputs/${data.run_id}/output.png?t=${Date.now()}`;
 
                 const dl = document.getElementById('dl-btn');
@@ -662,6 +729,7 @@
                     } catch {}
                 }, 900);
             } catch (e) {
+                ProgAnim.stop();
                 const msg2 = e.message || 'Group G failed';
                 const isRL2 = msg2.includes('Too many') || msg2.includes('retry_after');
                 setProgress('Error', msg2, 0, true);
@@ -674,6 +742,7 @@
         async function sendRequest(fd) {
             try {
                 const data = await fetchJSON(`${BASE}/upload`, { method: 'POST', body: fd });
+                ProgAnim.finish(fd.get('module') || 'A');
                 if (data.error) throw new Error(data.error);
                 currentRunId = data.run_id;
                 startSSE(data.run_id);
@@ -696,6 +765,7 @@
                     }
                     showOverlayForRun();
                 };
+                img.onerror = () => previewImgError(img, data.run_id, 'output.png');
                 img.src = `${BASE}/outputs/${data.run_id}/output.png?t=${Date.now()}`;
                 const dl = document.getElementById('dl-btn');
                 dl.href = data.download.startsWith('http') ? data.download : `${BASE}${data.download}`;
@@ -714,6 +784,7 @@
                     } catch {}
                 }, 800);
             } catch (e) {
+                ProgAnim.stop();
                 const msg = e.message || 'Pipeline failed';
                 const isRL = msg.includes('Too many') || msg.includes('retry_after');
                 setProgress('Error', msg, 0, true);
@@ -773,9 +844,11 @@
             formData.append('crs', document.getElementById('h-crs').value);
 
             setProgress('Group H', 'Uploading and processing...', 10);
+            ProgAnim.start('H', 'Uploading and processing...');
             try {
                 const response = await fetch('/run_h', { method: 'POST', body: formData });
                 const data = await response.json();
+                ProgAnim.finish('H');
                 if (data.error) throw new Error(data.error);
                 currentRunId = data.run_id;
                 startSSE(data.run_id);
@@ -790,12 +863,22 @@
                 const imgIds = ['h-preview-slope', 'h-preview-satellite', 'h-preview-sub', 'h-preview-sample', 'h-preview-boundary', 'h-preview-survey'];
                 mapNames.forEach((name, i) => {
                     const img = document.getElementById(imgIds[i]);
-                    if (img) img.src = base + name + '.png?t=' + Date.now();
+                    if (img) {
+                        img.onerror = () => { img.style.opacity = '0.25'; };
+                        img.onload = () => { img.style.opacity = '1'; };
+                        img.src = base + name + '.png?t=' + Date.now();
+                    }
                 });
 
                 // Set main preview to Slope Map
-                document.getElementById('out-img').src = base + 'Slope_Map.png?t=' + Date.now();
-                document.getElementById('out-img').style.display = 'block';
+                const hMain = document.getElementById('out-img');
+                hMain.onload = () => {
+                    hMain.style.display = 'block';
+                    document.getElementById('empty-msg').style.display = 'none';
+                };
+                hMain.onerror = () => previewImgError(hMain, data.run_id, 'Slope_Map.png');
+                hMain.src = base + 'Slope_Map.png?t=' + Date.now();
+                hMain.style.display = 'block';
                 document.getElementById('empty-msg').style.display = 'none';
                 switchPView('static');
                 document.getElementById('run-meta').textContent = `Group H run: ${data.run_id.slice(0,8)}…`;
@@ -806,6 +889,7 @@
                 // Show success
                 setProgress('Complete ✓', 'All six maps generated.', 100);
             } catch (e) {
+                ProgAnim.stop();
                 alert('Error: ' + e.message);
                 setProgress('Error', e.message, 0, true);
             } finally {

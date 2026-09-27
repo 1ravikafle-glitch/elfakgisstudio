@@ -158,7 +158,12 @@ Flask route (pipeline.py::upload, light)
 ### 1. Config (`core/config.py`)
 - `FIG_W=8.27, FIG_H=11.69, DPI=300` — A4 portrait
 - `POLY_COLOR, POINT_COL, GRID_COL`, label/tick sizes — map style constants
-- `UPLOAD/OUTPUT/DEM_CATALOG_DIR/DEM_CACHE_DIR`, GitHub DEM base — paths
+- `UPLOAD/OUTPUT/USERS_FILE/DEM_CATALOG_DIR/DEM_CACHE_DIR` — **absolute paths
+  anchored at the project root** (nearest ancestor with `app.py`+`templates/`).
+  Required: Flask's `send_from_directory` resolves relative dirs against
+  `app.root_path` (the `elfakgis/` package dir), while all writes use the
+  process CWD — relative paths serve 404s for files that exist. Never make
+  these relative again.
 
 ### 2. Auth & Security (`core/store.py`, `core/security.py`)
 - `_rate_limit(limit, window)` — per-IP sliding window decorator
@@ -271,6 +276,22 @@ app scripts. All CSS/JS was extracted byte-identical into cacheable files:
 All 9 scripts (6 vendor + 3 app) are `defer` in original execution order, so
 first paint is unblocked while behavior is unchanged. After editing any asset,
 bump the `?v=` pin in `templates/index.html`.
+
+### Progress model (time-based, 75% cap)
+
+The pipeline POST blocks until the run finishes, so the SSE stream can only
+replay buffered `_prog` events *after* completion. To avoid a stuck-at-5% bar,
+`static/js/app.js::ProgAnim` eases 5% → **75% cap** while awaiting the
+response, using per-module learned durations (`localStorage elfak-est-<M>`,
+seeded defaults A:25s…H:240s) with an ETA readout, then holds until the server
+confirms — only then 100%. Hooks: run-button handler (A–E), `runF`, `runG`,
+`runGroupH`; `finish()` records the wall time for the next estimate.
+
+### Preview robustness
+
+Preview images (`out-img`, H gallery) have `onerror` handlers
+(`previewImgError`) — a failed PNG shows a message + retry button and a
+ZIP-download link instead of failing silently.
 
 ### Layout
 ```
