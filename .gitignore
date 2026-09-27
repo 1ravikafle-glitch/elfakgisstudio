@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+.env
+*.log
+
+# Flask / GIS outputs (large + user data — never push)
+uploads/
+outputs/
+CF_OUTPUT/
+dem_catalog/
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.tif
+*.tiff
+*.zip
+*.kmz
+*.png
+
+# Auth store contains token hashes — never push
+users.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
