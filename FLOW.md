@@ -3,7 +3,7 @@
 ## 1. Application Load & Login
 
 ```
-Browser                        Flask (app.py)           users.json
+Browser                        Flask (elfakgis package)   users.json
   │                                │                        │
   ├─── GET /  ───────────────────► │                        │
   │◄── index.html ─────────────── │                        │
@@ -113,25 +113,28 @@ Flask /run_g
 
 ---
 
-## 5. Group F — Slope Analysis
+## 5. Group F — Slope Analysis (via `/upload`, `module=F`)
 
 ```
-User uploads boundary SHP, clicks Run F
+User uploads boundary + DEM, clicks Run F
   │
-Flask /run_f
+Flask /upload (module=F branch — only elfakgis/groups/group_f.py loads)
   │
-  ├── parse boundary SHP → poly_gdf
-  ├── determine UTM zone (44N or 45N) from centroid
-  ├── _fetch_dem_tiles(poly_gdf) 
-  │     ├── check dem_catalog/44N/ for local tiles
-  │     └── download missing tiles from GitHub raw
-  ├── clip DEM to boundary
-  ├── compute slope (scipy.ndimage or rasterio.warp)
-  ├── classify: 0-19° gentle, 19-31° moderate, >31° steep
+  ├── parse boundary (CSV/Excel or ZIP) → poly_gdf
+  ├── DEM from upload / dem_catalog_path / dem_cache_key
+  ├── clip DEM to boundary (20% buffered rect)
+  ├── compute slope (rasterio + scipy.ndimage)
+  ├── classify: 0–19° gentle, 19–31° moderate, >31° steep
   ├── vectorize slope classes → vgdf (GeoDataFrame)
-  ├── render_map(slope_mode=True)  ← bakes north arrow + scale bar
+  ├── render_map(slope_mode=True)  ← bakes north arrow + scale bar + slope table
   └─► return {run_id, download, kmz_url}
 ```
+
+> One-group-at-a-time: `/upload` validates first (400s need no GIS import),
+> then loads the shared GIS base + exactly the dispatched group's module.
+> `/run_g` loads only Group G, `/run_h` only Group H (after file validation).
+> See [ARCHITECTURE.md](ARCHITECTURE.md) (dependency rule) and
+> [docs/GROUPS.md](docs/GROUPS.md) (per-group reference).
 
 ---
 
@@ -215,7 +218,7 @@ User clicks "🔍 Full" (viewFullMap):
 
 User clicks "⬇ Export Official Map" (exportLayout):
   ├── collect _getLayoutStateForServer()
-  ├── POST /export_layout  [NOT YET IMPLEMENTED in app.py]
+  ├── POST /export_layout  [implemented in elfakgis/routes/maps.py]
   └── download PDF/PNG/SVG
 ```
 
