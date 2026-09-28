@@ -34,10 +34,13 @@ FIG_W, FIG_H, DPI = 8.27, 11.69, 300
 
 # GNU FreeSans covers Latin + Devanagari + symbols in one file, so mixed
 # Nepali/English titles never hit missing-glyph tofu. Noto/DejaVu are backup.
+# NOTE: DejaVu Sans ships *inside* matplotlib, so it is listed first — on
+# minimal servers (Render free) the first family hits instantly instead of
+# scoring every system font per text call (measured 1.6s/render wasted).
 plt.rcParams["font.family"] = "sans-serif"
 plt.rcParams["font.sans-serif"] = [
-    "FreeSans", "Noto Sans Devanagari", "Noto Sans Devanagari UI",
-    "DejaVu Sans", "Arial",
+    "DejaVu Sans", "FreeSans", "Noto Sans Devanagari",
+    "Noto Sans Devanagari UI", "Arial",
 ]
 plt.rcParams["axes.unicode_minus"] = False
 
@@ -94,9 +97,29 @@ THESIS_COLORS = {
     "study": "#D9CFF7",
 }
 THESIS_FIG_W, THESIS_FIG_H, THESIS_BAR_CM = 11.69, 8.27, 3.0
-# Thesis typography: Times New Roman throughout (bold for headings,
+# Thesis typography: Times-like serif throughout (bold for headings,
 # normal for body/scale text). Per-call family keeps threaded renders safe.
-_THESIS_FONT = ["Times New Roman", "Liberation Serif", "serif"]
+# NOTE: DejaVu Serif ships inside matplotlib and is listed first so minimal
+# servers resolve it instantly (Times New Roman is absent on Linux and forced
+# full font-list scoring on every text call).
+_THESIS_FONT = ["DejaVu Serif", "Liberation Serif", "Times New Roman", "serif"]
+
+
+def _thesis_simplify(gdf, tol):
+    """Display-only simplification (never touches saved shapefiles).
+
+    Locator panels draw 400k+ vertices; at panel scale anything below ~1px
+    (~span/1500) is invisible, so simplify to it. Falls back to the original
+    layer on any failure."""
+    if gdf is None or getattr(gdf, "empty", True) or tol <= 0:
+        return gdf
+    try:
+        out = gdf.copy()
+        out.geometry = out.geometry.simplify(tol, preserve_topology=True)
+        out = out[~out.geometry.is_empty]
+        return out if not out.empty else gdf
+    except Exception:
+        return gdf
 
 EPS = 1e-9
 
@@ -952,6 +975,22 @@ def render_thesis_map(path, nepal_districts_gdf, province_gdf,
     (Nepal, province, district, study); blanks keep auto text.
     """
     C = THESIS_COLORS
+    # Display-only simplification: sub-pixel vertices are invisible but cost
+    # minutes on weak CPUs (412k verts in the Nepal layer). Tolerance scales
+    # with the Nepal extent so small-district maps keep full detail.
+    try:
+        _span = max(
+            float(nepal_districts_gdf.total_bounds[2]
+                  - nepal_districts_gdf.total_bounds[0]),
+            float(nepal_districts_gdf.total_bounds[3]
+                  - nepal_districts_gdf.total_bounds[1]))
+        _tol = _span / 1500.0
+        nepal_districts_gdf = _thesis_simplify(nepal_districts_gdf, _tol)
+        province_gdf = _thesis_simplify(province_gdf, _tol)
+        prov_districts_gdf = _thesis_simplify(prov_districts_gdf, _tol)
+        district_gdf = _thesis_simplify(district_gdf, _tol)
+    except Exception:
+        pass
     fig = plt.figure(figsize=(THESIS_FIG_W, THESIS_FIG_H), dpi=dpi)
     fig.patch.set_facecolor("white")
 

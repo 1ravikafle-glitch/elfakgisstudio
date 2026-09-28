@@ -221,6 +221,8 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
         })
         with rasterio.open(sat_clip_path, "w", **out_meta) as dst:
             dst.write(out_image)
+    del out_image
+    gc.collect()
 
     _prog(run_id, "Loading sample points...", 45)
     sample_gdf = _read_points(sample_points_file, crs)
@@ -246,9 +248,22 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
         return fig, ax
 
     # Map 1: Slope Map
+    # Display-only simplification: real-DEM slope polygons carry thousands of
+    # jagged vertices; sub-pixel ones are invisible but cost RAM + CPU.
+    try:
+        _hb = boundary_gdf.total_bounds
+        _hstol = max(_hb[2] - _hb[0], _hb[3] - _hb[1]) / 800.0
+        _slope_disp = slope_poly.copy()
+        _slope_disp.geometry = _slope_disp.geometry.simplify(
+            _hstol, preserve_topology=True)
+        _slope_disp = _slope_disp[~_slope_disp.geometry.is_empty]
+        if _slope_disp.empty:
+            _slope_disp = slope_poly
+    except Exception:
+        _slope_disp = slope_poly
     fig1, ax1 = create_figure()
     for cls, info in SLOPE_CLASSES.items():
-        sub = slope_poly[slope_poly['class'] == cls]
+        sub = _slope_disp[_slope_disp['class'] == cls]
         if not sub.empty:
             sub.plot(ax=ax1, facecolor=info['color'], edgecolor='black', linewidth=0.2, label=info['range'])
     boundary_gdf.boundary.plot(ax=ax1, color='black', linewidth=2)
@@ -265,12 +280,31 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     fig1.savefig(os.path.join(out_dir, "Slope_Map.pdf"), bbox_inches='tight')
     fig1.savefig(os.path.join(out_dir, "Slope_Map.svg"), bbox_inches='tight')
     plt.close(fig1)
+    gc.collect()
+    # Slope vectors served Map 1 only — release before the imagery maps.
+    try:
+        del slope_poly, _slope_disp
+    except Exception:
+        pass
+    gc.collect()
     _prog(run_id, "Slope Map generated.", 60)
 
-    # Map 2: Satellite Map
+    # Map 2: Satellite Map (decimated display; full-res clip stays on disk)
     fig2, ax2 = create_figure()
     with rasterio.open(sat_clip_path) as src:
-        show(src, ax=ax2, title='')
+        _k = max(1, max(src.width, src.height) // 1200)
+        if _k > 1:
+            from affine import Affine
+            from rasterio.enums import Resampling
+            _arr = src.read(
+                out_shape=(src.count, int(src.height / _k),
+                           int(src.width / _k)),
+                resampling=Resampling.bilinear)
+            show(_arr, transform=src.transform * Affine.scale(_k, _k),
+                 ax=ax2, title='')
+            del _arr
+        else:
+            show(src, ax=ax2, title='')
     boundary_gdf.boundary.plot(ax=ax2, color='yellow', linewidth=2)
     compartments_gdf.plot(ax=ax2, facecolor='none', edgecolor='white', linewidth=0.5)
     for _, row in compartments_gdf.iterrows():
@@ -283,6 +317,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     fig2.savefig(os.path.join(out_dir, "Satellite_Map.pdf"), bbox_inches='tight')
     fig2.savefig(os.path.join(out_dir, "Satellite_Map.svg"), bbox_inches='tight')
     plt.close(fig2)
+    gc.collect()
     _prog(run_id, "Satellite Map generated.", 68)
 
     # Map 3: Sub-compartment Map
@@ -307,6 +342,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     fig3.savefig(os.path.join(out_dir, "SubCompartment_Map.pdf"), bbox_inches='tight')
     fig3.savefig(os.path.join(out_dir, "SubCompartment_Map.svg"), bbox_inches='tight')
     plt.close(fig3)
+    gc.collect()
     _prog(run_id, "Sub-compartment Map generated.", 76)
 
     # Map 4: Sample Plot Map
@@ -326,6 +362,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     fig4.savefig(os.path.join(out_dir, "SamplePlot_Map.pdf"), bbox_inches='tight')
     fig4.savefig(os.path.join(out_dir, "SamplePlot_Map.svg"), bbox_inches='tight')
     plt.close(fig4)
+    gc.collect()
     _prog(run_id, "Sample Plot Map generated.", 84)
 
     # Map 5: Boundary Survey Point Map
@@ -346,6 +383,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     fig5.savefig(os.path.join(out_dir, "BoundarySurveyPoint_Map.pdf"), bbox_inches='tight')
     fig5.savefig(os.path.join(out_dir, "BoundarySurveyPoint_Map.svg"), bbox_inches='tight')
     plt.close(fig5)
+    gc.collect()
     _prog(run_id, "Boundary Survey Point Map generated.", 92)
 
     # Map 6: Survey Point Map (no compartments)
@@ -365,6 +403,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     fig6.savefig(os.path.join(out_dir, "SurveyPoint_Map.pdf"), bbox_inches='tight')
     fig6.savefig(os.path.join(out_dir, "SurveyPoint_Map.svg"), bbox_inches='tight')
     plt.close(fig6)
+    gc.collect()
     _prog(run_id, "Survey Point Map generated.", 98)
 
     zip_path = os.path.join(out_dir, "GroupH_Maps.zip")
