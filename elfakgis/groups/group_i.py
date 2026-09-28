@@ -5,10 +5,10 @@
   TL: Nepal (all 77 districts)   TR: Province (its districts)
   BL: District                   BR: Study area + legend
 
-Base: data/nepal/local_unit.shp (777 local units, geographic Everest datum;
-STATE_CODE 1-7 + DISTRICT columns). All rendered layers are reprojected to
-the run's UTM zone (the app's 44N/45N/… setting), so every panel is metric
-and scale bars are exact.
+Base: data/nepal/provinces.shp (7) + data/nepal/districts.shp (77),
+geographic Everest datum; STATE_CODE 1-7 + DISTRICT columns. All rendered
+layers are reprojected to the run's UTM zone (the app's 44N/45N/… setting),
+so every panel is metric and scale bars are exact.
 
 Province/district are chosen manually from dropdowns (GET /thesis_options).
 Study area per run: SHP-ZIP polygon OR CSV/Excel boundary (same columns as
@@ -23,7 +23,8 @@ from functools import lru_cache
 import geopandas as gpd
 from shapely.ops import unary_union
 
-from elfakgis.core.config import NEPAL_BASE_SHP, PROVINCE_NAMES
+from elfakgis.core.config import (NEPAL_BASE_SHP, NEPAL_DISTRICTS_SHP,
+    NEPAL_PROVINCES_SHP, PROVINCE_NAMES)
 from elfakgis.core.store import _prog
 from elfakgis.geo.geom import get_crs, read_input, safe_polygon
 from elfakgis.geo.kmz import generate_kmz
@@ -90,10 +91,39 @@ def _load_base():
 
 @lru_cache(maxsize=1)
 def _dissolved_base():
-    """Dissolve once per worker (native base CRS) — every thesis run used to
-    re-dissolve all 777 units + re-union province/district polygons, which is
-    minutes of CPU on small Render instances. Per request we now only
-    reproject these cached layers into the run's UTM zone (seconds)."""
+    """Pre-dissolved base layers (native Everest CRS), cached per worker.
+
+    Primary: provinces.shp (7) + districts.shp (77) — dissolved once offline,
+    so Render never pays the 777-unit union. Per request we only reproject
+    these into the run's UTM zone (seconds).
+    Fallback: dissolve local_unit.shp in memory (same result, slower)."""
+    if (os.path.exists(NEPAL_PROVINCES_SHP)
+            and os.path.exists(NEPAL_DISTRICTS_SHP)):
+        prov = gpd.read_file(NEPAL_PROVINCES_SHP)
+        dist = gpd.read_file(NEPAL_DISTRICTS_SHP)
+        if prov.empty or dist.empty:
+            raise ValueError("Nepal base files are empty.")
+        for col in ("STATE_CODE",):
+            if col not in prov.columns or col not in dist.columns:
+                raise ValueError(
+                    "Nepal base files lack 'STATE_CODE' column.")
+        if "DISTRICT" not in dist.columns:
+            raise ValueError("Nepal base files lack 'DISTRICT' column.")
+        native = dist.crs or prov.crs
+        prov_poly = {int(r["STATE_CODE"]): r.geometry
+                     for _, r in prov.iterrows()}
+        prov_dist = {int(c): dist[dist["STATE_CODE"] == c][
+            ["DISTRICT", "geometry"]]
+            for c in sorted(dist["STATE_CODE"].unique().tolist())}
+        dist_poly = {str(r["DISTRICT"]): r.geometry
+                     for _, r in dist.iterrows()}
+        dist_code = {str(r["DISTRICT"]): int(r["STATE_CODE"])
+                     for _, r in dist.iterrows()}
+        nepal_d = dist[["DISTRICT", "geometry"]]
+        return {"crs": native, "nepal_d": nepal_d, "prov_poly": prov_poly,
+                "prov_dist": prov_dist, "dist_poly": dist_poly,
+                "dist_code": dist_code}
+    # Offline fallback: dissolve the 777 local units (slower, same output).
     w = _load_base()
     nepal_d = w.dissolve(by="DISTRICT", as_index=False)[
         ["DISTRICT", "geometry"]]
@@ -105,8 +135,11 @@ def _dissolved_base():
             ["DISTRICT", "geometry"]]
     dist_poly = {d: unary_union(w[w["DISTRICT"] == d].geometry)
                  for d in w["DISTRICT"].unique().tolist()}
+    dist_code = {d: int(w[w["DISTRICT"] == d]["STATE_CODE"].iloc[0])
+                 for d in w["DISTRICT"].unique().tolist()}
     return {"crs": w.crs, "nepal_d": nepal_d, "prov_poly": prov_poly,
-            "prov_dist": prov_dist, "dist_poly": dist_poly}
+            "prov_dist": prov_dist, "dist_poly": dist_poly,
+            "dist_code": dist_code}
 
 
 def thesis_panel_titles(prov_name, dist_name):
@@ -118,12 +151,12 @@ def thesis_panel_titles(prov_name, dist_name):
 
 def thesis_options():
     """Dropdown data: provinces + district list per province."""
-    w = _load_base()
+    base = _dissolved_base()
     provinces = [{"code": c, "name": n} for c, n in sorted(PROVINCE_NAMES.items())]
     by_prov = {}
     for code, name in sorted(PROVINCE_NAMES.items()):
-        sub = w[w["STATE_CODE"] == code]
-        by_prov[name] = sorted(sub["DISTRICT"].unique().tolist())
+        sub = base["prov_dist"].get(code)
+        by_prov[name] = sorted(sub["DISTRICT"].unique().tolist()) if sub is not None else []
     return {"provinces": provinces, "districts": by_prov}
 
 
@@ -136,7 +169,6 @@ def thesis_layers(province_sel, district_sel, study_gdf):
     """
     code, prov_name = _match_province(province_sel)
     base = _dissolved_base()
-    w = _load_base()
     dist_name = _match_district(district_sel, list(base["dist_poly"].keys()))
     target = study_gdf.crs
 
@@ -144,7 +176,7 @@ def thesis_layers(province_sel, district_sel, study_gdf):
         raise ValueError(f"No units found for province '{prov_name}'.")
     if dist_name not in base["dist_poly"]:
         raise ValueError(f"No units found for district '{dist_name}'.")
-    actual_code = int(w[w["DISTRICT"] == dist_name]["STATE_CODE"].iloc[0])
+    actual_code = base["dist_code"][dist_name]
     if actual_code != code:
         actual = PROVINCE_NAMES.get(actual_code, str(actual_code))
         raise ValueError(

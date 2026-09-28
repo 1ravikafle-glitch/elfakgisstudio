@@ -23,7 +23,18 @@ dem_catalog/
 *.kmz
 *.png
 
-# Thesis Map base bundle — required on Render for GET /thesis_options
+# Thesis Map base bundle — required on Render for GET /thesis_options.
+# Pre-dissolved 7 provinces + 77 districts (small, fast: Render only
+# reprojects to the user's UTM zone). local_unit.shp stays as offline
+# fallback/regeneration source.
+!data/nepal/provinces.shp
+!data/nepal/provinces.shx
+!data/nepal/provinces.dbf
+!data/nepal/provinces.prj
+!data/nepal/districts.shp
+!data/nepal/districts.shx
+!data/nepal/districts.dbf
+!data/nepal/districts.prj
 !data/nepal/local_unit.shp
 !data/nepal/local_unit.shx
 !data/nepal/local_unit.dbf

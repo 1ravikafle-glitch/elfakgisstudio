@@ -39,10 +39,13 @@ GITHUB_DEM_BASE = os.environ.get(
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
 DEM_CACHE_DIR = os.path.join(UPLOAD, "dem_cache")
 NEPAL_DIR = os.environ.get("NEPAL_DIR", os.path.join(_PROJECT_ROOT, "data", "nepal"))
-# Thesis Map base: 777 local units, geographic (Everest datum) with
-# STATE_CODE (1-7) + DISTRICT columns. Rendered layers are reprojected to
-# the run's UTM zone, so maps always follow the app's 44N/45N/… setting.
+# Thesis Map base: pre-dissolved 7 provinces + 77 districts, geographic
+# (Everest datum). Rendered layers are reprojected to the run's UTM zone, so
+# maps always follow the app's 44N/45N/… setting. local_unit.shp (777 units)
+# stays as the offline fallback source (regenerates the two files above).
 NEPAL_BASE_SHP = os.path.join(NEPAL_DIR, "local_unit.shp")
+NEPAL_PROVINCES_SHP = os.path.join(NEPAL_DIR, "provinces.shp")
+NEPAL_DISTRICTS_SHP = os.path.join(NEPAL_DIR, "districts.shp")
 NEPAL_WARDS_SHP = os.path.join(NEPAL_DIR, "NEPAL_WARDS.shp")  # legacy
 for _d in (UPLOAD, OUTPUT, DEM_CATALOG_DIR, DEM_CACHE_DIR):
     os.makedirs(_d, exist_ok=True)
