@@ -39,7 +39,7 @@ log = logging.getLogger("elfakgis")
 # Only used when the shared database is unavailable.
 FORESTRY_AUTH_URL = (
     os.environ.get("FORESTRY_AUTH_URL")
-    or "https://forestrypscpreparation.onrender.com/auth/login"
+    or "https://forestry-pscpreparation.onrender.com/auth/login"
 ).strip()
 
 SSO_AUDIENCE = "elfakgisprostudio"
