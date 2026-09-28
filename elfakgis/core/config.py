@@ -62,6 +62,10 @@ PROVINCE_NAMES = {
 }
 
 FIG_W, FIG_H, DPI = 8.27, 11.69, 300  # A4 portrait, 300 DPI
+# Group H renders 6 figures x 3 formats on a 512MB instance: PNG previews at
+# 150 DPI (1500px wide — crisp on screen, 4x fewer raster bytes) while the
+# PDF/SVG twins stay fully vector for print.
+H_PREVIEW_DPI = int(os.environ.get("H_PREVIEW_DPI", "150"))
 EPS = 1e-6
 DEFAULT_PADDING = 0.02
 

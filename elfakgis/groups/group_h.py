@@ -6,7 +6,7 @@ from functools import wraps
 from datetime import datetime
 
 log = logging.getLogger("elfakgis")
-from elfakgis.core.config import DPI, OUTPUT
+from elfakgis.core.config import DPI, H_PREVIEW_DPI, OUTPUT
 from elfakgis.core.store import _prog
 from elfakgis.geo.render import SLOPE_CLASSES, _add_north_arrow, _add_scale_bar
 
@@ -240,7 +240,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     _prog(run_id, "Generating maps...", 55)
 
     def create_figure():
-        fig = plt.figure(figsize=(10, 7.5), dpi=DPI)
+        fig = plt.figure(figsize=(10, 7.5), dpi=H_PREVIEW_DPI)
         fig.patch.set_facecolor('white')
         ax = fig.add_subplot(111)
         ax.set_facecolor('white')
@@ -276,7 +276,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     _add_scale_bar(fig1, ax1)
     _draw_slope_table_compact(ax1, slope_areas)
     ax1.set_title("Slope Map", fontsize=14, weight='bold')
-    fig1.savefig(os.path.join(out_dir, "Slope_Map.png"), dpi=DPI, bbox_inches='tight')
+    fig1.savefig(os.path.join(out_dir, "Slope_Map.png"), dpi=H_PREVIEW_DPI, bbox_inches='tight')
     fig1.savefig(os.path.join(out_dir, "Slope_Map.pdf"), bbox_inches='tight')
     fig1.savefig(os.path.join(out_dir, "Slope_Map.svg"), bbox_inches='tight')
     plt.close(fig1)
@@ -313,7 +313,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     _add_north_arrow(fig2)
     _add_scale_bar(fig2, ax2)
     ax2.set_title("Satellite Map", fontsize=14, weight='bold')
-    fig2.savefig(os.path.join(out_dir, "Satellite_Map.png"), dpi=DPI, bbox_inches='tight')
+    fig2.savefig(os.path.join(out_dir, "Satellite_Map.png"), dpi=H_PREVIEW_DPI, bbox_inches='tight')
     fig2.savefig(os.path.join(out_dir, "Satellite_Map.pdf"), bbox_inches='tight')
     fig2.savefig(os.path.join(out_dir, "Satellite_Map.svg"), bbox_inches='tight')
     plt.close(fig2)
@@ -338,7 +338,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     _add_scale_bar(fig3, ax3)
     ax3.legend(handles=handles, title="Compartments", loc='lower right')
     ax3.set_title("Sub-compartment Map", fontsize=14, weight='bold')
-    fig3.savefig(os.path.join(out_dir, "SubCompartment_Map.png"), dpi=DPI, bbox_inches='tight')
+    fig3.savefig(os.path.join(out_dir, "SubCompartment_Map.png"), dpi=H_PREVIEW_DPI, bbox_inches='tight')
     fig3.savefig(os.path.join(out_dir, "SubCompartment_Map.pdf"), bbox_inches='tight')
     fig3.savefig(os.path.join(out_dir, "SubCompartment_Map.svg"), bbox_inches='tight')
     plt.close(fig3)
@@ -358,7 +358,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     handles = [mpatches.Patch(facecolor='red', label='Sample Plots')]
     ax4.legend(handles=handles, loc='lower right')
     ax4.set_title("Sample Plot Map", fontsize=14, weight='bold')
-    fig4.savefig(os.path.join(out_dir, "SamplePlot_Map.png"), dpi=DPI, bbox_inches='tight')
+    fig4.savefig(os.path.join(out_dir, "SamplePlot_Map.png"), dpi=H_PREVIEW_DPI, bbox_inches='tight')
     fig4.savefig(os.path.join(out_dir, "SamplePlot_Map.pdf"), bbox_inches='tight')
     fig4.savefig(os.path.join(out_dir, "SamplePlot_Map.svg"), bbox_inches='tight')
     plt.close(fig4)
@@ -379,7 +379,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     handles = [mpatches.Patch(facecolor='blue', label='Survey Points')]
     ax5.legend(handles=handles, loc='lower right')
     ax5.set_title("Boundary Survey Point Map", fontsize=14, weight='bold')
-    fig5.savefig(os.path.join(out_dir, "BoundarySurveyPoint_Map.png"), dpi=DPI, bbox_inches='tight')
+    fig5.savefig(os.path.join(out_dir, "BoundarySurveyPoint_Map.png"), dpi=H_PREVIEW_DPI, bbox_inches='tight')
     fig5.savefig(os.path.join(out_dir, "BoundarySurveyPoint_Map.pdf"), bbox_inches='tight')
     fig5.savefig(os.path.join(out_dir, "BoundarySurveyPoint_Map.svg"), bbox_inches='tight')
     plt.close(fig5)
@@ -399,7 +399,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
     handles = [mpatches.Patch(facecolor='blue', label='Survey Points')]
     ax6.legend(handles=handles, loc='lower right')
     ax6.set_title("Survey Point Map", fontsize=14, weight='bold')
-    fig6.savefig(os.path.join(out_dir, "SurveyPoint_Map.png"), dpi=DPI, bbox_inches='tight')
+    fig6.savefig(os.path.join(out_dir, "SurveyPoint_Map.png"), dpi=H_PREVIEW_DPI, bbox_inches='tight')
     fig6.savefig(os.path.join(out_dir, "SurveyPoint_Map.pdf"), bbox_inches='tight')
     fig6.savefig(os.path.join(out_dir, "SurveyPoint_Map.svg"), bbox_inches='tight')
     plt.close(fig6)
