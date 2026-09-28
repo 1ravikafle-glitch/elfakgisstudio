@@ -67,11 +67,11 @@ def about_page():
 <meta name="keywords" content="elfakgis, elfakgispro, elfakgisstudio, elfakgisprostudio, elfak gis, elfak gis pro, forest gis nepal, forest boundary mapping, slope analysis nepal, compartment mapping, survey points gis, forestry nepal gis, GIS tool nepal">
 <meta name="robots" content="index, follow">
 <meta property="og:title" content="Elfak GIS Pro Studio — Forest GIS Application">
-<meta property="og:description" content="Professional web GIS for Nepal forestry: boundary mapping, slope analysis, compartment subdivision, survey points. Free to use at elfakgisprostudio.onrender.com">
-<meta property="og:url" content="https://elfakgisprostudio.onrender.com/">
+<meta property="og:description" content="Professional web GIS for Nepal forestry: boundary mapping, slope analysis, compartment subdivision, survey points. Free to use at elfakgisstudio.onrender.com">
+<meta property="og:url" content="https://elfakgisstudio.onrender.com/">
 <meta property="og:type" content="website">
-<link rel="canonical" href="https://elfakgisprostudio.onrender.com/">
-<link rel="alternate" href="https://elfakgisprostudio.onrender.com/" hreflang="en">
+<link rel="canonical" href="https://elfakgisstudio.onrender.com/">
+<link rel="alternate" href="https://elfakgisstudio.onrender.com/" hreflang="en">
 <style>
   body{font-family:system-ui,sans-serif;max-width:900px;margin:0 auto;padding:20px 24px;
        color:#1a2e22;background:#f0f8f3;line-height:1.7}
@@ -91,7 +91,7 @@ def about_page():
 {"@context":"https://schema.org","@type":"WebApplication",
  "name":"Elfak GIS Pro Studio",
  "alternateName":["elfakgis","elfakgispro","elfakgisstudio","elfakgisprostudio"],
- "url":"https://elfakgisprostudio.onrender.com/",
+ "url":"https://elfakgisstudio.onrender.com/",
  "description":"Professional web-based GIS application for forest boundary mapping, slope analysis, compartment subdivision and survey point generation for Nepal forestry professionals.",
  "applicationCategory":"GIS Software",
  "operatingSystem":"Web Browser",
@@ -141,7 +141,7 @@ def about_page():
 <p><a href="/" class="cta">🌲 Launch Elfak GIS Pro Studio</a></p>
 
 <footer>
-  <p>Elfak GIS Pro Studio · <a href="https://elfakgisprostudio.onrender.com/">elfakgisprostudio.onrender.com</a></p>
+  <p>Elfak GIS Pro Studio · <a href="https://elfakgisstudio.onrender.com/">elfakgisstudio.onrender.com</a></p>
   <p>Keywords: elfakgis · elfakgispro · elfakgisstudio · elfakgisprostudio · forest gis nepal · slope analysis · compartment mapping · survey points · forestry gis</p>
 </footer>
 </body>
@@ -162,16 +162,16 @@ Disallow: /outputs/
 Disallow: /download/
 Disallow: /progress/
 Disallow: /geojson/
-Sitemap: https://elfakgisprostudio.onrender.com/sitemap.xml
+Sitemap: https://elfakgisstudio.onrender.com/sitemap.xml
 """, mimetype="text/plain")
 
 @pages_bp.route("/sitemap.xml")
 def sitemap_xml():
     return Response("""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://elfakgisprostudio.onrender.com/</loc>
+  <url><loc>https://elfakgisstudio.onrender.com/</loc>
        <priority>1.0</priority><changefreq>weekly</changefreq></url>
-  <url><loc>https://elfakgisprostudio.onrender.com/about</loc>
+  <url><loc>https://elfakgisstudio.onrender.com/about</loc>
        <priority>0.9</priority><changefreq>monthly</changefreq></url>
 </urlset>""", mimetype="application/xml")
 

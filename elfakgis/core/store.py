@@ -121,15 +121,19 @@ def _append_run(uname, rid, mod, desc=""):
         log.warning("Postgres run append failed (%s); using users.json", e)
     with _USERS_LOCK:
         u = _lu()
-        if uname in u:
-            u[uname].setdefault("runs", []).append({
+        record = u.setdefault(uname, {
+            "username": uname,
+            "created_at": datetime.now().isoformat(),
+            "runs": [],
+        })
+        record.setdefault("runs", []).append({
                 "run_id":    rid,
                 "module":    mod,
                 "description": desc[:200],
                 "timestamp": datetime.now().isoformat(),
             })
-            u[uname]["runs"] = u[uname]["runs"][-100:]
-            _su(u)
+        record["runs"] = record["runs"][-100:]
+        _su(u)
 
 def _require_login():
     return session.get("username")

@@ -18,7 +18,7 @@ from elfakgis.core.config import *
 from elfakgis.core.store import (_prog, _PROG, _PROG_LOCK, _save_run_meta, _append_run,
     _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user,
     _runs_for)
-from elfakgis.core.security import _rate_limit, _cool_down, _safe_filename, _safe_path, _validate_username, _get_client_ip
+from elfakgis.core.security import _safe_filename, _safe_path, _get_client_ip
 from elfakgis.core.pipeline import _with_pipeline_sem
 from elfakgis.core import autshared
 from elfakgis.geo.kmz import _generate_run_id, _safe_runid
@@ -44,10 +44,14 @@ def login():
     username and password that work there work here.
     """
     data = request.get_json(silent=True) or {}
-    try:
-        username = _validate_username(data.get("username", ""))
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+    raw_username = data.get("username", "")
+    username = raw_username.strip() if isinstance(raw_username, str) else ""
+    # Forestry owns this account namespace: accept any nonempty Forestry
+    # username rather than re-imposing GIS's historical registration rules.
+    if not username:
+        return jsonify({"error": "Username is required."}), 400
+    if len(username) > 100:
+        return jsonify({"error": "Username is too long."}), 400
 
     password = data.get("password", "")
     if not isinstance(password, str):
@@ -67,7 +71,6 @@ def login():
         return jsonify({"error": "Invalid username or password."}), 401
 
     runs = _establish_session(username)
-    autshared.db.record_login(username)
     is_new = not _runs_for(username) and not _lu().get(username)
     log.info("Login: %r from %s", username, _get_client_ip())
 

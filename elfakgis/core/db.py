@@ -41,8 +41,38 @@ _ok = False
 _RETRY_SECONDS = 30.0
 
 
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+
+GIS_USERNAME_LEN = 100
+
+
 def _database_url() -> str:
     return (os.getenv("DATABASE_URL") or "").strip()
+
+
+def _normalize_database_url(raw: str) -> str:
+    """
+    Normalize a PostgreSQL URL without changing its credentials or options.
+
+    This accepts Render-style ``postgres://`` URLs, selects SQLAlchemy's
+    psycopg2 dialect explicitly, preserves Neon parameters such as
+    ``sslmode`` and ``channel_binding``, and adds ``sslmode=require`` only
+    when the deployment did not specify one.
+    """
+    url = (raw or "").strip()
+    if not url:
+        return ""
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    parts = urlsplit(url)
+    if parts.scheme not in ("postgresql", "postgresql+psycopg2"):
+        return url
+    scheme = "postgresql+psycopg2" if parts.scheme == "postgresql" else parts.scheme
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    if "sslmode" not in {name for name, _ in query}:
+        query.append(("sslmode", "require"))
+    return urlunsplit((scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
 
 def _connect():
@@ -50,7 +80,7 @@ def _connect():
     global _engine, _checked_at, _ok
     if not _SA:
         return None
-    url = _database_url()
+    url = _normalize_database_url(_database_url())
     if not url:
         return None
     with _lock:
@@ -119,26 +149,51 @@ def user_exists(username: str) -> bool:
     return get_password_hash(username) is not None
 
 
-def record_login(username: str) -> None:
-    """Best-effort 'last seen' marker. Never raises."""
-    if not username:
-        return
-    try:
-        _exec(
-            "UPDATE users SET created_at = created_at WHERE username = :u", {"u": username}
-        )
-    except Exception:
-        pass
-
-
 # ── Run history ───────────────────────────────────────────────────
+
+_GIS_USERNAME_COLUMNS = (
+    ("gis_user_cache", "username"),
+    ("gis_runs", "username"),
+)
+
+
+def _ensure_username_length(table: str, column: str) -> bool:
+    """
+    Keep GIS-owned username columns as wide as Forestry's ``users.username``.
+
+    Only GIS-owned tables are inspected or altered. Forestry's own schema is
+    never modified here.
+    """
+    if (table, column) not in _GIS_USERNAME_COLUMNS:
+        return False
+    row = _exec(
+        """
+        SELECT character_maximum_length
+        FROM information_schema.columns
+        WHERE table_name = :t AND column_name = :c
+        """,
+        {"t": table, "c": column},
+    )
+    if row is None:
+        return False
+    try:
+        width = row.first()[0]
+    except Exception:
+        return False
+    if width is None or int(width) >= GIS_USERNAME_LEN:
+        return True
+    altered = _exec(
+        f"ALTER TABLE {table} ALTER COLUMN {column} TYPE VARCHAR({GIS_USERNAME_LEN})"
+    )
+    return altered is not None
+
 
 def _ensure_tables() -> bool:
     """Create the GIS-side tables if they are missing. Idempotent."""
     ok = _exec(
         """
         CREATE TABLE IF NOT EXISTS gis_user_cache (
-            username   VARCHAR(64) PRIMARY KEY,
+            username   VARCHAR(100) PRIMARY KEY,
             pw_hash    TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT NOW()
         )
@@ -150,7 +205,7 @@ def _ensure_tables() -> bool:
         """
         CREATE TABLE IF NOT EXISTS gis_runs (
             id          SERIAL PRIMARY KEY,
-            username    VARCHAR(64) NOT NULL,
+            username    VARCHAR(100) NOT NULL,
             run_id      VARCHAR(128) NOT NULL,
             module      VARCHAR(64),
             description TEXT,
@@ -161,6 +216,9 @@ def _ensure_tables() -> bool:
     if ok2 is None:
         return False
     _exec("CREATE INDEX IF NOT EXISTS gis_runs_user_idx ON gis_runs (username, id DESC)")
+    for table, column in _GIS_USERNAME_COLUMNS:
+        if not _ensure_username_length(table, column):
+            return False
     return True
 
 
