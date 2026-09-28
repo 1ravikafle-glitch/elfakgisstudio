@@ -20,33 +20,17 @@
         { "@context": "https://schema.org", "@type": "WebApplication", "name": "Elfak GIS Pro Studio", "alternateName": ["elfakgis", "elfakgispro", "elfakgisstudio", "elfakgisprostudio"], "url": "https://elfakgisstudio.onrender.com/", "description": "Professional web-based GIS for forest boundary mapping, slope analysis, compartment subdivision and survey point generation.", "applicationCategory": "GIS Software", "operatingSystem": "Web Browser", "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" } }
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-    </script>
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.css" />
-    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js">
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js">
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js">
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
-    </script>
+    <!-- Heavy optional libs (xlsx ~0.9MB, geoman ~0.3MB, html2canvas ~0.2MB,
+         jszip ~0.1MB) load on demand, one file at a time (each well under
+         2MB), via ensureVendor() in app.js: instantly on first use, or
+         quietly in the background right after login. -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,600&display=swap" rel="stylesheet" />
     <link rel="preconnect" href="https://unpkg.com" crossorigin />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.css" />
-    <script defer src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js"></script>
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/app.css?v=20260927-1" />
     <link rel="stylesheet" href="/static/css/forestry.css?v=20260928-1" />
 </head>
@@ -108,7 +92,7 @@
                 <div><div class="logo-text">Elfak GIS</div><div class="logo-sub">Pro Studio · Forest Mapping</div></div>
             </div>
             <div class="hdr-pills">
-                <div class="pill"><span class="pill-dot"></span>Engine Online</div>
+                <div class="pill" id="engine-pill"><span class="pill-dot"></span><span id="engine-pill-txt">Engine Online</span></div>
                 <div class="pill">Projection: <strong id="hdr-crs" style="margin-left:4px">EPSG:32644</strong></div>
                 <div class="pill">Module: <strong id="hdr-mod" style="margin-left:4px">A · Boundary</strong></div>
             </div>
@@ -832,7 +816,7 @@
         </div><!-- main -->
     </div><!-- shell -->
 
-    <script defer src="/static/js/app.js?v=20260928-3"></script>
+    <script defer src="/static/js/app.js?v=20260929-1"></script>
     <script defer src="/static/js/dock.js?v=20260927-1"></script>
     <script defer src="/static/js/dock-resize.js?v=20260927-1"></script>
 </body>

@@ -32,6 +32,71 @@
             return res.json();
         }
 
+        // ── On-demand vendor loader (progressive, ≤2MB per file) ──
+        // Heavy libs are NOT in <head> anymore. Each file below is well under
+        // 2MB and loads alone, on first use — or sequentially in the background
+        // right after login (_warmup). Cached by the browser afterwards.
+        const VENDOR = {
+            jszip: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+            xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+            html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+            geoman: 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js'
+        };
+        const _vendorP = {};
+        function _vendorReady(name) {
+            if (name === 'xlsx') return !!window.XLSX;
+            if (name === 'jszip') return !!window.JSZip;
+            if (name === 'html2canvas') return !!window.html2canvas;
+            if (name === 'geoman') return !!(window.L && window.L.PM);
+            return false;
+        }
+        function ensureVendor(name) {
+            if (_vendorReady(name)) return Promise.resolve();
+            if (_vendorP[name]) return _vendorP[name];
+            _vendorP[name] = new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = VENDOR[name];
+                s.async = true;
+                const to = setTimeout(() => reject(new Error(name + ' load timed out')), 30000);
+                s.onload = () => { clearTimeout(to); resolve(); };
+                s.onerror = () => { clearTimeout(to); reject(new Error('Could not download ' + name + ' library. Check connection and retry.')); };
+                document.head.appendChild(s);
+            }).catch(e => { delete _vendorP[name]; throw e; });
+            return _vendorP[name];
+        }
+
+        // Background warmup after login: fetch one small file at a time
+        // (each < 2MB) so later actions feel instant and nothing ever
+        // blocks the UI. Runs once per page load.
+        let _warmed = false;
+        function _setEngineTxt(t) {
+            const el = document.getElementById('engine-pill-txt');
+            if (el) el.textContent = t;
+        }
+        async function _warmup() {
+            if (_warmed) return;
+            _warmed = true;
+            const idle = () => new Promise(r => {
+                if ('requestIdleCallback' in window) requestIdleCallback(() => r(), { timeout: 1500 });
+                else setTimeout(r, 800);
+            });
+            await idle();
+            try {
+                const steps = [
+                    ['jszip', () => ensureVendor('jszip')],
+                    ['xlsx', () => ensureVendor('xlsx')],
+                    ['html2canvas', () => ensureVendor('html2canvas')],
+                    ['geoman', () => ensureVendor('geoman')],
+                    ['map data', () => loadThesisOptions()],
+                ];
+                for (let i = 0; i < steps.length; i++) {
+                    _setEngineTxt(`Warming ${i + 1}/${steps.length}…`);
+                    try { await steps[i][1](); } catch (_) { /* one miss must not stop the rest */ }
+                }
+                _setEngineTxt('Engine Online');
+            } catch (_) { _setEngineTxt('Engine Online'); }
+        }
+
         // ── parse columns from CSV or Excel ──────────────────────────────
         async function parseFileColumns(file) {
             const name = file.name.toLowerCase();
@@ -44,6 +109,8 @@
                 else if (line.includes('\t')) d = '\t';
                 return line.split(d).map(x => x.trim()).filter(Boolean);
             } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+                try { await ensureVendor('xlsx'); }
+                catch (e) { throw new Error('Excel reader is still downloading. Wait a moment and re-select the file.'); }
                 const data = await file.arrayBuffer();
                 const wb = XLSX.read(data, { type: 'array' });
                 const ws = wb.Sheets[wb.SheetNames[0]];
@@ -215,6 +282,11 @@
         }
 
         async function handleZipShps(file, selEl, colSelEl) {
+            try { await ensureVendor('jszip'); }
+            catch (e) {
+                selEl.innerHTML = '<option>⚠️ zip reader failed to load — check connection</option>';
+                return;
+            }
             const zip = await JSZip.loadAsync(await file.arrayBuffer());
             const shps = Object.keys(zip.files).filter(p => p.toLowerCase().endsWith('.shp'));
             selEl.innerHTML = shps.length ? shps.map(f => `<option>${f}</option>`).join('') : '<option>No SHP found</option>';
@@ -1259,6 +1331,9 @@
             document.getElementById('osm-idle').style.display = 'none';
             document.getElementById('osm-map').style.display = 'block';
             document.getElementById('edit-toolbar').classList.add('visible');
+            // Edit tools (geoman) arrive in the background; the base map
+            // must never wait for them. All .pm uses below are guarded.
+            ensureVendor('geoman').catch(() => {});
             _ensureLeafMap();
             leafLayers.forEach(l => { try { leafMap.removeLayer(l); } catch {} });
             leafLayers = [];
@@ -2447,7 +2522,7 @@
         }
 
         // ── Full View ──
-        function viewFullMap() {
+        async function viewFullMap() {
             const modal = document.getElementById('map-modal');
             const mimg = document.getElementById('modal-img');
             const mdl = document.getElementById('modal-dl-btn');
@@ -2492,6 +2567,8 @@
                 }
             });
 
+            try { await ensureVendor('html2canvas'); }
+            catch (e) { fallbackToRaw(); return; }
             html2canvas(target, {
                 scale: 2.0,
                 useCORS: true,
@@ -3013,6 +3090,9 @@
             }, 100);
             document.getElementById('uavatar').textContent = username.charAt(0).toUpperCase();
             renderHistory(runs);
+            // Fire-and-forget: pull the small optional libs + dropdown data
+            // one file at a time so everything feels instant afterwards.
+            try { _warmup(); } catch (_) {}
 
             const toast = document.createElement('div');
             toast.textContent = isNew ? `Welcome, ${username}! Account created.` : `Welcome back, ${username}!`;

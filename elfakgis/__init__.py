@@ -80,6 +80,10 @@ def create_app():
         if request.path.startswith(("/login", "/me", "/history", "/progress")):
             resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
             resp.headers["Pragma"]        = "no-cache"
+        # Version-pinned static (?v=) is immutable: repeat visits + the
+        # post-login warmup serve it from browser cache, no re-download.
+        if request.path.startswith("/static/") and request.args.get("v"):
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         resp.headers["X-Accel-Buffering"] = "no"
         return resp
 
