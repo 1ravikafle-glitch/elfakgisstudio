@@ -1,0 +1,311 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Elfak GIS Pro Studio — "Field Survey" theme layer
+   Loaded AFTER app.css. Aligns the studio with the Forestry PSC
+   Preparation design system so both products feel like one suite.
+
+   Why a separate layer instead of editing app.css:
+   app.css is hand-tuned per module (418 lines, dense). Overriding a
+   documented token set from one place keeps app.css as the working
+   baseline, so this file can be deleted to revert instantly.
+
+   Palette derived from forestry-psc-theme.css and contrast-audited:
+     primary #378152  4.75:1 on white   (old #059669 was 3.77:1 — failed)
+     muted   #4c6158  6.65:1 on white   (old #86868b was 3.62:1 — failed)
+     blue    #1d5fa8  6.45:1 on white   (old #0a84ff was 3.65:1 — failed)
+     amber-t #8a4a08  6.85:1 on white   (old #f5a524 was 1.87:1 — failed)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Light tokens ── */
+:root {
+    /* Surfaces — green-tinted parchment, matching Forestry PSC */
+    --bg: #eff3ec;
+    --bg2: #e4ebe1;
+    --panel: rgba(250, 251, 249, .86);
+    --panel-solid: #fafbf9;
+    --panel-hd: rgba(18, 33, 27, .035);
+    --input: #ffffff;
+
+    /* Text — every value meets WCAG AA on its surface */
+    --txt: #12211b;
+    --txt2: #33473d;
+    --muted: #4c6158;          /* was #86868b (3.62:1) — now 6.65:1 */
+
+    /* Lines */
+    --border: #cbd8cf;
+    --border-strong: #a9bcb0;
+
+    /* Accent — the Forestry PSC primary green */
+    --accent: #378152;         /* was #059669 (3.77:1) — now 4.75:1 */
+    --accent2: #2f6b45;
+    --accent-strong: #245c38;  /* text used against tinted accent surfaces */
+    --accent-grad: linear-gradient(135deg, #4e9a6b, #378152);
+    --accent-soft: rgba(55, 129, 82, .13);
+    --accent-line: rgba(55, 129, 82, .34);
+    --focus: rgba(55, 129, 82, .55);
+    --hover: rgba(55, 129, 82, .07);
+
+    /* Status colours, all ≥4.5:1 on the surfaces above */
+    --red: #a3281c;            /* was #e5484d */
+    --blue: #1d5fa8;           /* was #0a84ff (3.65:1) */
+    --blue-soft: rgba(29, 95, 168, .12);
+    --blue-line: rgba(29, 95, 168, .34);
+    /* Amber stays vivid for fills/badges, but text uses --amber-text. */
+    --amber: #e68619;
+    --amber-text: #8a4a08;     /* was #f5a524 (1.87:1) — now 6.85:1 */
+    --amber-soft: rgba(138, 74, 8, .12);
+    --amber-line: rgba(138, 74, 8, .32);
+    --danger-soft: rgba(163, 40, 28, .10);
+    --danger-line: rgba(163, 40, 28, .30);
+
+    /* Corners follow Forestry PSC: 14px cards, 11px controls, 8px chips */
+    --r-lg: 14px;
+    --r-md: 11px;
+    --r-sm: 8px;
+
+    /* Softer, warmer shadows — no glow */
+    --shadow-sm: 0 1px 2px rgba(18, 33, 27, .06);
+    --shadow-md: 0 4px 16px rgba(18, 33, 27, .08);
+    --shadow-lg: 0 12px 40px rgba(18, 33, 27, .12);
+
+    /* Display face used by Forestry PSC for headings */
+    --display: 'Fraunces', 'SF Pro Display', Georgia, serif;
+}
+
+/* ── Dark tokens ── */
+[data-theme="dark"] {
+    --bg: #101e18;
+    --bg2: #0b1712;
+    --panel: rgba(26, 46, 37, .86);
+    --panel-solid: #1a2e25;
+    --panel-hd: rgba(255, 255, 255, .045);
+    --input: #16281f;
+
+    --txt: #e9efe6;
+    --txt2: #c3d0c2;
+    --muted: #aab7a4;          /* 6.86:1 on --panel-solid */
+
+    --border: #2a3c34;
+    --border-strong: #3d5449;
+
+    --accent: #5eba7d;         /* 7.20:1 on --bg */
+    --accent2: #7fca9c;
+    --accent-strong: #8fd6a8;  /* text used against tinted accent surfaces */
+    --accent-grad: linear-gradient(135deg, #7fca9c, #4e9a6b);
+    --accent-soft: rgba(94, 186, 125, .16);
+    --accent-line: rgba(94, 186, 125, .38);
+    --focus: rgba(94, 186, 125, .55);
+    --hover: rgba(94, 186, 125, .10);
+
+    --red: #f08a80;
+    --red-soft: rgba(240, 138, 128, .14);
+    --red-line: rgba(240, 138, 128, .36);
+    --blue: #7ab6f0;
+    --blue-soft: rgba(122, 182, 240, .16);
+    --blue-line: rgba(122, 182, 240, .38);
+    --amber: #f0a94a;
+    --amber-text: #f5c37a;     /* readable on dark surfaces */
+    --amber-soft: rgba(245, 195, 122, .16);
+    --amber-line: rgba(245, 195, 122, .38);
+    --danger-soft: rgba(240, 138, 128, .14);
+    --danger-line: rgba(240, 138, 128, .36);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .45);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, .5);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, .6);
+}
+
+/* ── Typography: 11px functional floor ──
+   app.css and index.html used 8px/9px/10px for controls and status text.
+   Everything functional now clears the 11px floor (scales with viewport). */
+.hdr-btn,
+.nav-item,
+.mtab,
+.ptab,
+.tog,
+.pill,
+button,
+select,
+input,
+label,
+th,
+td {
+    font-size: max(11px, 0.6875rem);
+}
+
+.hdr-btn,
+.pill,
+#theme-btn,
+#theme-label,
+.login-card button,
+.zone-chip,
+.mtab,
+.ptab {
+    font-size: max(11px, 0.6875rem);
+}
+
+/* Smallest decorative labels keep their scale but are no longer body copy. */
+.hdr .pill,
+.mono-xs {
+    font-size: max(10px, 0.625rem);
+}
+
+/* ── Amber used as text must use the darker ramp ── */
+.color-amber,
+.amber-text,
+[style*="color:var(--amber)"] {
+    color: var(--amber-text) !important;
+}
+
+.badge-amber,
+.amber-badge {
+    background: var(--amber-soft);
+    border: 1px solid var(--amber-text);
+    color: var(--amber-text);
+}
+
+/* ── Remove the AI-slop "side tab" accent ──
+   index.html had `border-left:3px solid var(--purple)` on two nav items.
+   --purple was never defined, so these borders rendered as nothing; the
+   active state is already communicated by .nav-item.active. */
+.nav-item[style*="border-left"],
+.nav-item[style*="border-left:3px"] {
+    border-left: none !important;
+}
+
+/* ── Springs belong on interaction, not on keyframes ──
+   .32,.72,0,1 overshoots when used to interpolate a timed animation. */
+.card.active > *,
+#login-overlay,
+.login-card,
+#pv-static, #pv-osm, #pv-compose,
+.sheet, .modal {
+    animation-timing-function: cubic-bezier(.22, .61, .36, 1) !important;
+}
+
+/* ── No empty-image flash ──
+   Result/preview <img> elements ship with no src and are filled in later by
+   JS. Hide them until they have something to show. */
+img:not([src]),
+img[src=""],
+img[src="#"] {
+    visibility: hidden;
+    min-height: 40px;
+    background: var(--muted);
+    border-radius: var(--r-sm);
+    opacity: .35;
+}
+
+/* ── Focus visibility: keep the ring, make it read clearly ──
+   (A 0-offset ring is correct for focus; the old colour was too faint.) */
+select:focus,
+input:focus,
+button:focus-visible,
+a:focus-visible,
+.nav-item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ── Carry the Forestry palette into app.css components ──
+   These classes otherwise use the older blue, amber, purple, and green HEX
+   values. The variable values above change automatically for dark mode. */
+.dz.over {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+}
+
+.badge.info {
+    background: var(--blue-soft);
+    border-color: var(--blue-line);
+    color: var(--blue);
+}
+
+.badge.warn {
+    background: var(--amber-soft);
+    border-color: var(--amber-line);
+    color: var(--amber-text);
+}
+
+.badge.purple,
+.mtab.featured,
+.mtab-new {
+    background: var(--accent-soft);
+    border-color: var(--accent-line);
+    color: var(--accent-strong);
+}
+
+.hdr-btn.danger:hover {
+    background: var(--danger-soft);
+    border-color: var(--danger-line);
+    color: var(--red);
+}
+
+/* ── Product identity strip ── */
+.forestry-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 11px;
+    border-radius: var(--pill);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+    color: var(--accent);
+    font-family: var(--sans);
+    font-size: max(11px, 0.6875rem);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background .18s var(--ease), transform .18s var(--ease);
+}
+
+.forestry-badge:hover {
+    background: var(--accent-line);
+    transform: translateX(-2px);
+}
+
+.forestry-badge .fb-mark {
+    width: 17px;
+    height: 17px;
+    border-radius: 5px;
+    background: var(--accent-grad);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.forestry-badge .fb-arrow {
+    font-size: 10px;
+    opacity: .7;
+}
+
+/* Keep the badge from crowding the header on small screens. */
+@media (max-width: 900px) {
+    .forestry-badge .fb-text { display: none; }
+    .forestry-badge { padding: 5px 8px; }
+}
+
+/* ── Section headers pick up the Forestry display face ── */
+.logo-text,
+.panel-hd,
+.hdr-pills .pill {
+    font-family: var(--sans);
+}
+
+h1, h2, h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    letter-spacing: -.01em;
+}
+
+/* ── Respect reduced motion across the layer ── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}

@@ -2901,7 +2901,9 @@
 
         async function doLogin() {
             const inp = document.getElementById('login-inp');
+            const pwEl = document.getElementById('login-pw');
             const name = inp.value.trim();
+            const password = pwEl ? pwEl.value : '';
             const errEl = document.getElementById('lerr');
             const sugg = document.getElementById('sugg');
             const btn = document.getElementById('login-go');
@@ -2927,6 +2929,14 @@
                 errEl.style.display = 'block';
                 return;
             }
+            if (!password) {
+                if (pwEl) pwEl.classList.add('taken');
+                errEl.textContent = 'Please enter your password.';
+                errEl.style.display = 'block';
+                if (pwEl) pwEl.focus();
+                return;
+            }
+            if (pwEl) pwEl.classList.remove('taken');
 
             btn.disabled = true;
             btn.textContent = 'Checking…';
@@ -2937,13 +2947,13 @@
                 const data = await fetchJSON(`${BASE}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: name })
+                    body: JSON.stringify({ username: name, password: password })
                 });
 
                 if (data.taken) {
                     inp.classList.add('taken');
                     errEl.className = 'login-err taken-msg';
-                    errEl.textContent = data.error || `"${name}" is already taken by another user.`;
+                    errEl.textContent = data.error || `Could not sign in as "${name}".`;
                     errEl.style.display = 'block';
                     _suggs = _genSuggs(name);
                     const spans = sugg.querySelectorAll('span');
@@ -2985,6 +2995,9 @@
         }
 
         function onLoginSuccess(username, runs, isNew) {
+            // Don't leave the password sitting in the DOM.
+            const pwEl = document.getElementById('login-pw');
+            if (pwEl) pwEl.value = '';
             const ov = document.getElementById('login-overlay');
             ov.style.transition = 'opacity .45s';
             ov.style.opacity = '0';

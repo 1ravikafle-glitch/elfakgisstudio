@@ -14,8 +14,8 @@
     <meta property="og:type" content="website" />
     <link rel="canonical" href="https://elfakgisprostudio.onrender.com/" />
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-    <meta name="theme-color" content="#059669" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#060e09" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#378152" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#101e18" media="(prefers-color-scheme: dark)" />
     <script type="application/ld+json">
         { "@context": "https://schema.org", "@type": "WebApplication", "name": "Elfak GIS Pro Studio", "alternateName": ["elfakgis", "elfakgispro", "elfakgisstudio", "elfakgisprostudio"], "url": "https://elfakgisprostudio.onrender.com/", "description": "Professional web-based GIS for forest boundary mapping, slope analysis, compartment subdivision and survey point generation.", "applicationCategory": "GIS Software", "operatingSystem": "Web Browser", "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" } }
     </script>
@@ -33,7 +33,7 @@
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,600&display=swap" rel="stylesheet" />
     <link rel="preconnect" href="https://unpkg.com" crossorigin />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -46,8 +46,9 @@
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/static/css/app.css?v=20260927-1" />
+    <link rel="stylesheet" href="/static/css/forestry.css?v=20260928-1" />
 </head>
 <body>
     <div id="theme-flash"></div>
@@ -56,19 +57,22 @@
     <div id="login-overlay">
         <div class="login-card">
             <div style="text-align:center;margin-bottom:6px">
-                <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 14px;border-radius:20px;background:rgba(16,185,129,.10);border:1px solid rgba(16,185,129,.22);font-size:10px;font-family:var(--mono);color:var(--muted)">
-                    <span style="width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px rgba(16,185,129,.6);animation:pillPulse 2s infinite"></span>
+                <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 14px;border-radius:20px;background:var(--accent-soft);border:1px solid var(--accent-line);font-size:11px;font-family:var(--mono);color:var(--muted)">
+                    <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent-soft);animation:pillPulse 2s infinite"></span>
                     System Online · <span id="lcard-usercount">Secure Login</span>
                 </div>
             </div>
             <h2>🌲 Elfak GIS Engine Pro</h2>
-            <p style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-                Enter a <strong>unique username</strong> to access the Forest Studio.
+            <p style="font-size:max(11px,0.6875rem);color:var(--muted);margin-bottom:12px;line-height:1.6">
+                Sign in with the <strong>same username and password</strong> you use on
+                <a href="https://forestrypscpreparation.onrender.com/" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-weight:600">Forestry PSC Preparation</a>.
+                New here? Your account is created instantly.
             </p>
-            <input type="text" id="login-inp" placeholder="Choose a unique username…" maxlength="40" oninput="_checkUsernameHint(this.value)" onkeydown="if(event.key==='Enter')doLogin()">
-            <div id="login-hint" style="font-size:10px;color:var(--muted);font-family:var(--mono);min-height:16px;margin-top:5px;padding-left:2px;transition:color .3s"></div>
+            <input type="text" id="login-inp" placeholder="Username" maxlength="40" autocomplete="username" aria-label="Username" oninput="_checkUsernameHint(this.value)" onkeydown="if(event.key==='Enter'){document.getElementById('login-pw').focus();return;}" style="margin-bottom:8px">
+            <input type="password" id="login-pw" placeholder="Password" maxlength="128" autocomplete="current-password" aria-label="Password" onkeydown="if(event.key==='Enter')doLogin()">
+            <div id="login-hint" style="font-size:max(11px,0.6875rem);color:var(--muted);font-family:var(--mono);min-height:16px;margin-top:5px;padding-left:2px;transition:color .3s"></div>
             <div class="login-err" id="lerr"></div>
-            <div id="sugg" style="margin-top:8px;font-size:10.5px;color:var(--muted)">
+            <div id="sugg" style="margin-top:8px;font-size:max(11px,0.6875rem);color:var(--muted);display:none">
                 Similar names: <span onclick="trySugg(0)">…</span> <span onclick="trySugg(1)">…</span> <span onclick="trySugg(2)">…</span>
             </div>
             <button id="login-go" onclick="doLogin()">Enter Studio →</button>
@@ -99,7 +103,7 @@
                         <path d="M24 8 L33 22 H28.5 L35 31 H13 L19.5 22 H15 Z" fill="#fff" opacity="0.96"/>
                         <rect x="22" y="31" width="4" height="7" rx="1.5" fill="#fff" opacity="0.9"/>
                         <defs><linearGradient id="elfakG" x1="2" y1="2" x2="46" y2="46" gradientUnits="userSpaceOnUse">
-                            <stop stop-color="#34d399"/><stop offset="1" stop-color="#059669"/>
+                            <stop stop-color="#4e9a6b"/><stop offset="1" stop-color="#378152"/>
                         </linearGradient></defs>
                     </svg>
                 </div>
@@ -117,9 +121,15 @@
                 <a href="/about" target="_blank" class="hdr-btn" style="text-decoration:none">ℹ About</a>
                 <button class="hdr-btn danger" onclick="doLogout()">Sign Out</button>
             </div>
+            <a class="forestry-badge" href="https://forestrypscpreparation.onrender.com/" target="_blank" rel="noopener noreferrer" title="Back to Forestry PSC Preparation">
+                <span class="fb-mark" aria-hidden="true">F</span>
+                <span class="fb-text">Forestry PSC</span>
+                <span class="fb-arrow" aria-hidden="true">&#8599;</span>
+                <span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">Open Forestry PSC Preparation in a new tab</span>
+            </a>
             <button id="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme" style="background:none;border:1.5px solid var(--border);border-radius:50px;padding:5px 14px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--txt2);display:flex;align-items:center;gap:7px;flex-shrink:0;min-width:90px;justify-content:center;transition:all .3s var(--ease);position:relative;overflow:hidden;">
                 <span id="theme-icon" style="font-size:14px;transition:transform .5s var(--spring)">🌙</span>
-                <span id="theme-label" style="font-size:10px">Dark</span>
+                <span id="theme-label" style="font-size:11px">Dark</span>
             </button>
         </header>
 
@@ -138,13 +148,13 @@
                     <div class="nav-item" onclick="switchTab('E')">✂️ E — Subdivider</div>
                     <div class="nav-item" onclick="switchTab('F')">🏔 F — Slope</div>
                     <div class="nav-item" onclick="switchTab('G')">📌 G — Survey Points</div>
-                    <div class="nav-item" onclick="switchTab('H')" style="border-left:3px solid var(--purple);">
+                    <div class="nav-item" onclick="switchTab('H')">
                         🌲 H — Sample Points
-                        <span style="background:#059669;color:white;font-size:8px;padding:1px 6px;border-radius:10px;margin-left:4px;">NEW</span>
+                        <span style="background:var(--accent);color:var(--panel-solid);font-size:11px;padding:1px 7px;border-radius:10px;margin-left:4px;">NEW</span>
                     </div>
-                    <div class="nav-item" onclick="switchTab('I')" style="border-left:3px solid var(--purple);">
+                    <div class="nav-item" onclick="switchTab('I')">
                         🗺 I — Thesis Map
-                        <span style="background:#059669;color:white;font-size:8px;padding:1px 6px;border-radius:10px;margin-left:4px;">NEW</span>
+                        <span style="background:var(--accent);color:var(--panel-solid);font-size:11px;padding:1px 7px;border-radius:10px;margin-left:4px;">NEW</span>
                     </div>
                     <div class="nav-sep"></div>
                     <div class="fg" style="margin-top:6px">
@@ -180,9 +190,9 @@
                             <div class="mtab" id="mt-D" onclick="switchTab('D')">D</div>
                             <div class="mtab" id="mt-E" onclick="switchTab('E')">E</div>
                             <div class="mtab" id="mt-F" onclick="switchTab('F')">F</div>
-                            <div class="mtab" id="mt-G" onclick="switchTab('G')" style="background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.3);color:#5b21b6">G</div>
-                            <div class="mtab" id="mt-H" onclick="switchTab('H')" style="background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.3);color:#5b21b6;">H</div>
-                            <div class="mtab" id="mt-I" onclick="switchTab('I')" style="background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.3);color:#5b21b6;">I</div>
+                            <div class="mtab" id="mt-G" onclick="switchTab('G')" style="background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-strong)">G</div>
+                            <div class="mtab" id="mt-H" onclick="switchTab('H')" style="background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-strong);">H</div>
+                            <div class="mtab" id="mt-I" onclick="switchTab('I')" style="background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-strong);">I</div>
                         </div>
                     </div>
                     <div class="panel-body config-area">
@@ -199,7 +209,7 @@
                                 <div class="fg"><label>Forest Name</label><input type="text" data-key="forest" data-card="A" value="FOREST"></div>
                             </div>
                             <div class="badge"><strong>ℹ️ Output:</strong> Polygon + Line + Point SHP · Area + Labels</div>
-                            <div class="badge info" style="font-size:8px;color:#1d4ed8;"><strong>📁 File type:</strong> CSV · XLS · XLSX only</div>
+                            <div class="badge info" style="font-size:11px;color:var(--blue);"><strong>📁 File type:</strong> CSV · XLS · XLSX only</div>
                         </div>
 
                         <!-- B -->
@@ -215,7 +225,7 @@
                             </div>
                             <div class="fg"><label>Compartment Column (optional)</label><select data-key="Compartment" data-card="B"></select></div>
                             <div class="badge"><strong>ℹ️ Output:</strong> One SHP set per forest / compartment</div>
-                            <div class="badge info" style="font-size:8px;color:#1d4ed8;"><strong>📁 File type:</strong> CSV · XLS · XLSX only</div>
+                            <div class="badge info" style="font-size:11px;color:var(--blue);"><strong>📁 File type:</strong> CSV · XLS · XLSX only</div>
                         </div>
 
                         <!-- C -->
@@ -252,7 +262,7 @@
                                 <div class="fg"><label>Grid Cols</label><input type="number" id="cc2" value="10" min="1" step="1"></div>
                             </div>
                             <div class="badge"><strong>ℹ️ Output:</strong> Boundary SHP + Sample Points SHP + Excel</div>
-                            <div class="badge info" style="font-size:8px;color:#1d4ed8;"><strong>📁 File type:</strong> CSV · XLS · XLSX · ZIP</div>
+                            <div class="badge info" style="font-size:11px;color:var(--blue);"><strong>📁 File type:</strong> CSV · XLS · XLSX · ZIP</div>
                         </div>
 
                         <!-- D -->
@@ -274,7 +284,7 @@
                             </div>
                             <div class="fg hidden" id="d-comp-fg"><label>Compartment Column</label><select data-key="Compartment" data-card="D"></select></div>
                             <div class="badge"><strong>ℹ️ Output:</strong> One folder per Forest</div>
-                            <div class="badge info" style="font-size:8px;color:#1d4ed8;"><strong>📁 File type:</strong> CSV · XLS · XLSX only</div>
+                            <div class="badge info" style="font-size:11px;color:var(--blue);"><strong>📁 File type:</strong> CSV · XLS · XLSX only</div>
                         </div>
 
                         <!-- E -->
@@ -320,7 +330,7 @@
                             </div>
                             <div class="badge"><strong>📐 <span id="e-n-disp">4</span> compartments</strong></div>
                             <div class="badge info"><strong>✏️ Tip:</strong> After running, edit vertices in the OpenStreetMap tab, then Save Edits.</div>
-                            <div class="badge info" style="font-size:8px;color:#1d4ed8;"><strong>📁 File type:</strong> CSV · XLS · XLSX · ZIP</div>
+                            <div class="badge info" style="font-size:11px;color:var(--blue);"><strong>📁 File type:</strong> CSV · XLS · XLSX · ZIP</div>
                         </div>
 
                         <!-- F -->
@@ -355,7 +365,7 @@
                                     <select id="f-csv-comp">
                                         <option value="">— auto detect —</option>
                                     </select>
-                                    <div style="font-size:8.5px;color:var(--muted);margin-top:3px;font-family:var(--mono);">
+                                    <div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--mono);">
                                         ⚠️ Select the column that identifies each forest (Multi‑Forest) or each compartment (Compartment mode).
                                     </div>
                                 </div>
@@ -364,28 +374,28 @@
                             <div style="display:flex;flex-direction:column;gap:6px">
                                 <div class="fg">
                                     <label>DEM Library
-                                        <span style="color:var(--mint);font-size:8px;margin-left:4px">📦 44N · 45N ready</span>
+                                        <span style="color:var(--mint);font-size:11px;margin-left:4px">📦 44N · 45N ready</span>
                                     </label>
                                     <input type="text" id="f-dem-search" placeholder="🔍 Search by name or zone (e.g. 44N, N27…)" oninput="_filterDemList(this.value)" style="margin-bottom:3px">
                                     <div style="display:flex;gap:4px;margin-bottom:4px">
-                                        <button onclick="_filterDemList('','')" style="flex:1;padding:4px;font-size:9px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-all">All Zones</button>
-                                        <button onclick="_filterDemList('','44N')" style="flex:1;padding:4px;font-size:9px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-44">Zone 44N</button>
-                                        <button onclick="_filterDemList('','45N')" style="flex:1;padding:4px;font-size:9px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-45">Zone 45N</button>
+                                        <button onclick="_filterDemList('','')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-all">All Zones</button>
+                                        <button onclick="_filterDemList('','44N')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-44">Zone 44N</button>
+                                        <button onclick="_filterDemList('','45N')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-45">Zone 45N</button>
                                     </div>
-                                    <select id="f-dem-catalog" size="5" style="height:auto;border-color:rgba(16,185,129,.25);font-size:10px;font-family:var(--mono);padding:4px;min-height:65px" onchange="_onDemSelect(this)">
+                                    <select id="f-dem-catalog" size="5" style="height:auto;border-color:rgba(16,185,129,.25);font-size:11px;font-family:var(--mono);padding:4px;min-height:65px" onchange="_onDemSelect(this)">
                                         <option value="" disabled>Loading DEM catalog from GitHub…</option>
                                     </select>
-                                    <div id="f-dem-cat-info" style="font-size:9px;color:var(--muted);font-family:var(--mono);min-height:16px;line-height:1.6">
+                                    <div id="f-dem-cat-info" style="font-size:11px;color:var(--muted);font-family:var(--mono);min-height:16px;line-height:1.6">
                                     </div>
                                     <div id="f-dem-dl-wrap" style="display:none;margin-top:4px">
-                                        <div style="font-size:9px;color:var(--mint);font-family:var(--mono);margin-bottom:3px" id="f-dem-dl-label">Downloading DEM…</div>
+                                        <div style="font-size:11px;color:var(--mint);font-family:var(--mono);margin-bottom:3px" id="f-dem-dl-label">Downloading DEM…</div>
                                         <div style="height:4px;background:rgba(16,185,129,.12);border-radius:4px;overflow:hidden">
                                             <div id="f-dem-dl-bar" style="height:100%;background:var(--mint-g);width:0%;transition:width .4s;border-radius:4px">
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div style="text-align:center;font-size:9px;color:var(--muted);font-family:var(--mono);padding:4px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+                                <div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--mono);padding:4px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
                                     — or upload a .tif —
                                 </div>
                                 <div class="dz" id="dz-F-dem" style="transition:opacity .3s,filter .3s">
@@ -445,14 +455,14 @@
                                     <div class="dz" id="dz-H-boundary"><span class="dz-text">📦 Upload Boundary ZIP</span>
                                         <input type="file" class="fi" data-group="H" data-key="boundary" accept=".zip">
                                     </div>
-                                    <div style="font-size:8px;color:var(--muted);">.shp · .dbf · .shx · .prj required</div>
+                                    <div style="font-size:11px;color:var(--muted);">.shp · .dbf · .shx · .prj required</div>
                                 </div>
                                 <div class="fg">
                                     <label>🗂 Sub-compartment Layer <span style="color:var(--red);">*</span></label>
                                     <div class="dz" id="dz-H-compartments"><span class="dz-text">📦 Upload Compartments ZIP</span>
                                         <input type="file" class="fi" data-group="H" data-key="compartments" accept=".zip">
                                     </div>
-                                    <div style="font-size:8px;color:var(--muted);">Comp_ID or Label column required</div>
+                                    <div style="font-size:11px;color:var(--muted);">Comp_ID or Label column required</div>
                                 </div>
                             </div>
 
@@ -477,7 +487,7 @@
                                     <div class="dz" id="dz-H-sample_points"><span class="dz-text">📂 Upload Excel (.xlsx) or Shapefile (.zip)</span>
                                         <input type="file" class="fi" data-group="H" data-key="sample_points" accept=".xlsx,.zip">
                                     </div>
-                                    <div style="font-size:8px;color:var(--muted);">Point_ID + Lat/Long or Easting/Northing</div>
+                                    <div style="font-size:11px;color:var(--muted);">Point_ID + Lat/Long or Easting/Northing</div>
                                 </div>
                                 <div class="fg">
                                     <label>🔍 Survey Points <span style="color:var(--muted);">(optional)</span></label>
@@ -550,11 +560,11 @@
                                 </div>
                                 <div class="row2">
                                     <div class="fg"><label>Point Order</label><select data-key="Order" data-card="I"></select></div>
-                                    <div class="fg"><label>&nbsp;</label><div style="font-size:8.5px;color:var(--muted);">ZIP shapefiles skip column mapping.</div></div>
+                                    <div class="fg"><label>&nbsp;</label><div style="font-size:11px;color:var(--muted);">ZIP shapefiles skip column mapping.</div></div>
                                 </div>
                             </div>
                             <div class="badge"><strong>ℹ️ Output:</strong> A4-landscape locator PNG + study SHP + KMZ</div>
-                            <div class="badge info" style="font-size:8px;color:#1d4ed8;"><strong>📁 File type:</strong> CSV · XLS · XLSX · ZIP</div>
+                            <div class="badge info" style="font-size:11px;color:var(--blue);"><strong>📁 File type:</strong> CSV · XLS · XLSX · ZIP</div>
                             <div class="g-summary" id="t-result-box"></div>
                         </div>
 
@@ -663,7 +673,7 @@
                             <div id="ov-logo" class="ov-item ov-logo" data-ov-type="logo" style="left:4%;top:2%;width:44px;height:44px;min-width:30px;min-height:30px;z-index:11;pointer-events:none;">
                                 <div class="ov-drag-area" style="display:flex;align-items:center;justify-content:center;border-radius:4px;background:transparent;cursor:default;">
                                     <svg viewBox="0 0 48 48" fill="none" style="width:100%;height:100%;max-width:44px;max-height:44px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.1));">
-                                        <rect x="2" y="2" width="44" height="44" rx="12" fill="#059669"/>
+                                        <rect x="2" y="2" width="44" height="44" rx="12" fill="#378152"/>
                                         <path d="M24 8 L33 22 H28.5 L35 31 H13 L19.5 22 H15 Z" fill="#fff" opacity="0.96"/>
                                         <rect x="22" y="31" width="4" height="7" rx="1.5" fill="#fff" opacity="0.9"/>
                                     </svg>
@@ -714,7 +724,7 @@
                         <div id="osm-map"></div>
                     </div>
                     <div class="edit-toolbar" id="edit-toolbar">
-                        <span style="font-size:9px;font-family:var(--mono);color:var(--muted);padding:2px 4px">Edit Tools:</span>
+                        <span style="font-size:11px;font-family:var(--mono);color:var(--muted);padding:2px 4px">Edit Tools:</span>
                         <button class="etool" id="tool-vertex" onclick="setTool('vertex')">✏️ Vertices</button>
                         <button class="etool" onclick="deleteSelected()">🗑 Delete</button>
                         <button class="etool" onclick="undoEdit()">↩ Undo</button>
@@ -761,7 +771,7 @@
                             <div class="comp-mod-hint" id="comp-mod-hint"></div>
                         </div>
                         <button class="run-btn" style="width:100%" onclick="doCompose()">🎨 Re-Render Map</button>
-                        <div id="comp-status" style="font-size:10px;color:var(--muted);font-family:var(--mono);min-height:16px"></div>
+                        <div id="comp-status" style="font-size:11px;color:var(--muted);font-family:var(--mono);min-height:16px"></div>
                         <div class="sep"></div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
                             <button class="etool" onclick="window.open(document.getElementById('out-img').src,'_blank')">🖼 Open Full PNG</button>
@@ -797,14 +807,14 @@
                         <button class="run-btn" style="width:100%;margin-top:6px" onclick="exportLayout()">
                             ⬇ Export Official Map
                         </button>
-                        <div id="export-status" style="font-size:10px;color:var(--muted);font-family:var(--mono);min-height:16px;margin-top:4px"></div>
+                        <div id="export-status" style="font-size:11px;color:var(--muted);font-family:var(--mono);min-height:16px;margin-top:4px"></div>
                     </div>
                 </div>
 
                 <div class="preview-foot">
                     <div class="run-meta" id="run-meta">Metrics: Ready</div>
                     <div style="display:flex;gap:8px;align-items:center">
-                        <button type="button" id="view-full-btn" onclick="viewFullMap()" style="display:none;padding:6px 13px;border-radius:6px;background:rgba(59,130,246,.10);border:1px solid rgba(59,130,246,.3);color:#1d4ed8;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .2s">🔍 Full View</button>
+                        <button type="button" id="view-full-btn" onclick="viewFullMap()" style="display:none;padding:6px 13px;border-radius:6px;background:var(--blue-soft);border:1px solid var(--blue-line);color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .2s">🔍 Full View</button>
                         <a id="dl-btn" class="dl-btn" href="#">⬇ Download ZIP</a>
                     </div>
                 </div>
@@ -816,7 +826,7 @@
                     </div>
                     <div style="display:flex;gap:10px">
                         <button onclick="document.getElementById('map-modal').style.display='none'" style="padding:8px 20px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:white;font-size:12px;cursor:pointer;font-family:var(--sans);font-weight:600">✕ Close</button>
-                        <a id="modal-dl-btn" href="#" download style="padding:8px 20px;border-radius:20px;border:1px solid rgba(16,185,129,.4);background:rgba(16,185,129,.15);color:#34d399;font-size:12px;cursor:pointer;font-family:var(--sans);font-weight:600;text-decoration:none">⬇ Download PNG</a>
+                        <a id="modal-dl-btn" href="#" download style="padding:8px 20px;border-radius:20px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font-size:12px;cursor:pointer;font-family:var(--sans);font-weight:600;text-decoration:none">⬇ Download PNG</a>
                     </div>
                 </div>
             </div><!-- right panel -->

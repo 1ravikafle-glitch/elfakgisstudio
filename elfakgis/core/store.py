@@ -95,8 +95,30 @@ def _logout_user(name):
             u[name]["active_sessions"] = max(0, u[name].get("active_sessions", 1) - 1)
             _su(u)
 
+def _runs_for(uname):
+    """Run history for a user: shared Postgres first, users.json as fallback."""
+    if not uname: return []
+    try:
+        from elfakgis.core import db as _db
+        rows = _db.get_runs(uname, limit=100)
+        if rows is not None:
+            return rows
+    except Exception as e:
+        log.warning("Postgres run history unavailable (%s); using users.json", e)
+    with _USERS_LOCK:
+        u = _lu()
+        return list(u.get(uname, {}).get("runs", []))
+
+
 def _append_run(uname, rid, mod, desc=""):
     if not uname: return
+    # Primary store: shared PostgreSQL, so history survives redeploys.
+    try:
+        from elfakgis.core import db as _db
+        if _db.add_run(uname, rid, mod, desc):
+            return
+    except Exception as e:
+        log.warning("Postgres run append failed (%s); using users.json", e)
     with _USERS_LOCK:
         u = _lu()
         if uname in u:
