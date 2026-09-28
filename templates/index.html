@@ -56,26 +56,24 @@
     <!-- LOGIN -->
     <div id="login-overlay">
         <div class="login-card">
-            <div style="text-align:center;margin-bottom:6px">
-                <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 14px;border-radius:20px;background:var(--accent-soft);border:1px solid var(--accent-line);font-size:11px;font-family:var(--mono);color:var(--muted)">
-                    <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent-soft);animation:pillPulse 2s infinite"></span>
-                    System Online · <span id="lcard-usercount">Secure Login</span>
+            <div class="login-head">
+                <span class="login-mark" aria-hidden="true">F</span>
+                <div>
+                    <div class="login-title">Elfak GIS Pro Studio</div>
+                    <div class="login-sub">Forestry PSC Preparation · one shared account</div>
                 </div>
             </div>
-            <h2>🌲 Elfak GIS Engine Pro</h2>
-            <p style="font-size:max(11px,0.6875rem);color:var(--muted);margin-bottom:12px;line-height:1.6">
-                Sign in with the <strong>same username and password</strong> you use on
-                <a href="https://forestry-pscpreparation.onrender.com/" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-weight:600">Forestry PSC Preparation</a>.
-                New here? Your account is created instantly.
-            </p>
-            <input type="text" id="login-inp" placeholder="Username" maxlength="40" autocomplete="username" aria-label="Username" oninput="_checkUsernameHint(this.value)" onkeydown="if(event.key==='Enter'){document.getElementById('login-pw').focus();return;}" style="margin-bottom:8px">
-            <input type="password" id="login-pw" placeholder="Password" maxlength="128" autocomplete="current-password" aria-label="Password" onkeydown="if(event.key==='Enter')doLogin()">
+            <label class="login-label" for="login-inp">Username</label>
+            <input type="text" id="login-inp" placeholder="e.g. student123" maxlength="40" autocomplete="username" aria-label="Username" oninput="_checkUsernameHint(this.value)" onkeydown="if(event.key==='Enter'){document.getElementById('login-pw').focus();return;}">
+            <label class="login-label" for="login-pw">Password</label>
+            <input type="password" id="login-pw" placeholder="Your password" maxlength="128" autocomplete="current-password" aria-label="Password" onkeydown="if(event.key==='Enter')doLogin()">
             <div id="login-hint" style="font-size:max(11px,0.6875rem);color:var(--muted);font-family:var(--mono);min-height:16px;margin-top:5px;padding-left:2px;transition:color .3s"></div>
             <div class="login-err" id="lerr"></div>
             <div id="sugg" style="margin-top:8px;font-size:max(11px,0.6875rem);color:var(--muted);display:none">
                 Similar names: <span onclick="trySugg(0)">…</span> <span onclick="trySugg(1)">…</span> <span onclick="trySugg(2)">…</span>
             </div>
-            <button id="login-go" onclick="doLogin()">Enter Studio →</button>
+            <button id="login-go" onclick="doLogin()">Sign in</button>
+            <p class="login-note">Same username and password as <a href="https://forestry-pscpreparation.onrender.com/" target="_blank" rel="noopener noreferrer">Forestry PSC Preparation</a>. New here? Your Elfak GIS Pro Studio account is created instantly.</p>
         </div>
     </div>
 

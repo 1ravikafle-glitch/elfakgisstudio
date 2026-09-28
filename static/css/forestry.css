@@ -301,6 +301,123 @@ h1, h2, h3 {
     letter-spacing: -.01em;
 }
 
+/* ── Desktop login: same card language as Forestry PSC ── */
+@media (min-width: 1101px) {
+    #login-overlay {
+        background: var(--bg);
+        padding: 32px 20px 80px;
+    }
+
+    .login-card {
+        width: min(430px, 100%);
+        background: var(--panel-solid);
+        border: 1.5px solid var(--accent-line);
+        border-radius: 22px;
+        box-shadow: var(--shadow-lg);
+        padding: 36px 34px 30px;
+    }
+
+    .login-head {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        margin-bottom: 20px;
+    }
+
+    .login-mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: #fff;
+        font-size: 20px;
+        font-weight: 800;
+        background: var(--accent-grad);
+    }
+
+    .login-title {
+        font-family: var(--display);
+        font-size: 23px;
+        font-weight: 600;
+        letter-spacing: -.01em;
+        color: var(--txt);
+        line-height: 1.15;
+    }
+
+    .login-sub {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+
+    .login-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--txt);
+        margin: 0 0 8px;
+    }
+
+    #login-inp,
+    #login-pw {
+        width: 100%;
+        min-height: 52px;
+        box-sizing: border-box;
+        background: var(--input);
+        border: 1px solid var(--border-strong);
+        border-radius: 12px;
+        padding: 13px 15px;
+        font-size: 15px;
+        color: var(--txt);
+        font-family: var(--sans);
+        outline: none;
+    }
+
+    #login-inp { margin-bottom: 16px; }
+    #login-pw { margin-bottom: 6px; }
+
+    #login-inp:focus,
+    #login-pw:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    #login-go {
+        width: 100%;
+        min-height: 52px;
+        margin-top: 18px;
+        border: none;
+        border-radius: 12px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
+        font-family: var(--sans);
+        cursor: pointer;
+    }
+
+    #login-go:hover { background: var(--accent2); }
+    #login-go:disabled { opacity: .65; cursor: wait; }
+
+    [data-theme="dark"] #login-go { color: #0f241b; }
+
+    .login-note {
+        margin: 18px 0 0;
+        text-align: center;
+        font-size: 13px;
+        line-height: 1.65;
+        color: var(--muted);
+    }
+
+    .login-note a {
+        color: var(--accent);
+        font-weight: 700;
+    }
+}
+
 /* ── Respect reduced motion across the layer ── */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
