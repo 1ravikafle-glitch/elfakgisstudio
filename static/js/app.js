@@ -353,8 +353,31 @@
             E: 'E · Subdivider',
             F: 'F · Slope Analysis',
             G: 'G · Survey Points',
-            H: 'H · Sample Point Based'
+            H: 'H · Sample Point Based',
+            I: 'I · Thesis Map'
         };
+        let _thesisOpts = null;
+        async function loadThesisOptions() {
+            if (_thesisOpts) return _thesisOpts;
+            const ps = document.getElementById('t-province');
+            try {
+                const d = await fetchJSON(`${BASE}/thesis_options`);
+                if (d.error) throw new Error(d.error);
+                _thesisOpts = d;
+                ps.innerHTML = '<option value="">— select province —</option>' +
+                    d.provinces.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+            } catch (e) {
+                ps.innerHTML = '<option value="">⚠️ failed to load</option>';
+            }
+            return _thesisOpts;
+        }
+        function onThesisProvince() {
+            const pv = document.getElementById('t-province').value;
+            const ds = document.getElementById('t-district');
+            const list = (_thesisOpts?.districts?.[pv]) || [];
+            ds.innerHTML = list.length ? list.map(x => `<option value="${x}">${x}</option>`).join('')
+                : '<option value="">— no districts —</option>';
+        }
 
         function switchTab(t) {
             activeModule = t;
@@ -383,8 +406,9 @@
                     hm.style.transform = ''; }, 180);
             }
             document.getElementById('comp-module').value = t;
+            if (t === 'I') loadThesisOptions();
             const rb = document.getElementById('run-btn');
-            if (rb) rb.textContent = t === 'G' ? '📌 Generate Points' : '▶ Run Pipeline';
+            if (rb) rb.textContent = t === 'G' ? '📌 Generate Points' : t === 'I' ? '🗺 Generate Thesis Map' : '▶ Run Pipeline';
         }
 
         function setCMode(m) { cMode = m;
@@ -435,7 +459,7 @@
         // confirms — only then show 100%.
         const ProgAnim = (() => {
             const CAP = 75, MIN = 5;
-            const DEFAULTS = {A:25000,B:25000,C:40000,D:45000,E:90000,F:150000,G:60000,H:240000};
+            const DEFAULTS = {A:25000,B:25000,C:40000,D:45000,E:90000,F:150000,G:60000,H:240000,I:90000};
             let timer = null, t0 = 0, est = 45000, msg = '';
             const key = m => `elfak-est-${m}`;
             function getEst(m) {
@@ -560,6 +584,7 @@
 
         async function runPipeline() {
             if (activeModule === 'G') { await runG(); return; }
+            if (activeModule === 'I') { await runThesis(); return; }
             const title = document.getElementById('g-title').value.trim();
             const legendTitle = document.getElementById('g-legend').value.trim() || 'Legend';
             const labelCol = document.getElementById('g-label').value.trim();
@@ -734,6 +759,70 @@
                 const isRL2 = msg2.includes('Too many') || msg2.includes('retry_after');
                 setProgress('Error', msg2, 0, true);
                 if (!isRL2) alert('Error: ' + msg2);
+            } finally {
+                document.getElementById('run-btn').disabled = false;
+            }
+        }
+
+        async function runThesis() {
+            const file = document.getElementById('fi-I')?.files?.[0];
+            if (!file) { alert('Please upload a study-area file first.'); return; }
+            const province = document.getElementById('t-province')?.value?.trim();
+            const district = document.getElementById('t-district')?.value?.trim();
+            if (!province || !district) { alert('Please select a province and a district.'); return; }
+            const cfName = document.getElementById('t-cfname')?.value?.trim() ||
+                file.name.replace(/\.[^.]+$/, '');
+            const title = document.getElementById('g-title').value.trim();
+            const zone = document.getElementById('zone').value;
+            document.getElementById('run-btn').disabled = true;
+            setProgress('Processing…', 'Starting Thesis Map…', 5);
+            ProgAnim.start('I', 'Starting Thesis Map…');
+            document.getElementById('t-result-box')?.classList?.remove('visible');
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('province', province);
+            fd.append('district', district);
+            fd.append('cf_name', cfName);
+            fd.append('title', title);
+            fd.append('zone', zone);
+            fd.append('mapping', JSON.stringify(buildMapping('I')));
+            try {
+                const data = await fetchJSON(`${BASE}/run_thesis`, { method: 'POST', body: fd });
+                ProgAnim.finish('I');
+                if (data.error) throw new Error(data.error);
+                currentRunId = data.run_id;
+                startSSE(data.run_id);
+                const img = document.getElementById('out-img');
+                img.onload = () => { img.style.display = 'block';
+                    document.getElementById('empty-msg').style.display = 'none'; };
+                img.onerror = () => previewImgError(img, data.run_id, 'output.png');
+                img.src = `${BASE}/outputs/${data.run_id}/output.png?t=${Date.now()}`;
+                const dl = document.getElementById('dl-btn');
+                dl.href = `${BASE}${data.download}`;
+                dl.style.display = 'inline-block';
+                document.getElementById('dl-btn2').href = dl.href;
+                if (data.summary) {
+                    const s = data.summary;
+                    const box = document.getElementById('t-result-box');
+                    if (box) {
+                        box.innerHTML = `<strong>✅ Thesis Map Complete</strong><br>` +
+                            `${s.cf_name} · ${s.district} District · ${s.province} Province` +
+                            (s.area_ha != null ? `<br>Study area: <strong>${Number(s.area_ha).toFixed(2)} ha</strong>` : '');
+                        box.classList.add('visible');
+                    }
+                }
+                document.getElementById('run-meta').textContent = `Run: ${data.run_id.slice(0,8)}… | Module: I`;
+                loadOSM(data.run_id, data.kmz_url || null);
+                setTimeout(async () => {
+                    try {
+                        const hd = await fetchJSON(`${BASE}/history`);
+                        if (hd.runs) renderHistory(hd.runs);
+                    } catch {}
+                }, 900);
+            } catch (e) {
+                ProgAnim.stop();
+                setProgress('Error', e.message || 'Thesis Map failed', 0, true);
+                alert('Error: ' + (e.message || 'Thesis Map failed'));
             } finally {
                 document.getElementById('run-btn').disabled = false;
             }
@@ -2490,6 +2579,31 @@
                 if (!(d.rows || []).length) {
                     box.innerHTML = '<div class="comp-rows-hint">No legend rows found for this run.</div>';
                 }
+                const pbox = document.getElementById('comp-panel-titles');
+                const pfg = document.getElementById('comp-panels-fg');
+                if (pbox && pfg) {
+                    pbox.innerHTML = '';
+                    if ((d.panel_titles || []).length) {
+                        pfg.classList.remove('hidden');
+                        d.panel_titles.forEach((txt, i) => {
+                            const row = document.createElement('div');
+                            row.className = 'comp-row';
+                            const n = document.createElement('span');
+                            n.className = 'comp-row-n';
+                            n.textContent = 'P' + (i + 1);
+                            const inp = document.createElement('input');
+                            inp.className = 'comp-row-inp';
+                            inp.type = 'text';
+                            inp.placeholder = txt || ('Panel ' + (i + 1));
+                            inp.title = 'Blank = keep: ' + (txt || '');
+                            row.appendChild(n);
+                            row.appendChild(inp);
+                            pbox.appendChild(row);
+                        });
+                    } else {
+                        pfg.classList.add('hidden');
+                    }
+                }
                 setStat('Map texts loaded.' + (d.note ? ' ' + d.note : ''));
                 return true;
             } catch (e) {
@@ -2507,7 +2621,8 @@
             E: 'Subdivision map: rename Compartment-N rows (areas included), SN points listed last.',
             F: 'Slope map: rename the three slope-class rows; hectares stay measured.',
             G: 'Survey-point map: Vertex / Boundary / Divider rows with counts; toggle point IDs.',
-            H: 'Sample-point slope map: same rows as slope plus survey points.'
+            H: 'Sample-point slope map: same rows as slope plus survey points.',
+            I: 'Thesis map: 4 rows — study area, district, province, Nepal. Title + legend title editable.'
         };
         function updateCompHint() {
             const el = document.getElementById('comp-mod-hint');
@@ -2533,6 +2648,7 @@
                 subtitle: document.getElementById('comp-subtitle').value || '',
                 area_text: document.getElementById('comp-area').value || '',
                 legend_labels: [...document.querySelectorAll('#comp-legend-rows .comp-row-inp')].map(e => e.value),
+                panel_titles: [...document.querySelectorAll('#comp-panel-titles .comp-row-inp')].map(e => e.value),
                 point_labels: document.getElementById('comp-ptlabels').value || 'auto',
                 legend_title: document.getElementById('comp-legend').value || 'Legend',
                 label_col: document.getElementById('comp-label').value || document.getElementById('g-label').value || '',
@@ -2674,6 +2790,7 @@
                         subtitle: document.getElementById('comp-subtitle')?.value || '',
                         area_text: document.getElementById('comp-area')?.value || '',
                         legend_labels: [...document.querySelectorAll('#comp-legend-rows .comp-row-inp')].map(e => e.value),
+                        panel_titles: [...document.querySelectorAll('#comp-panel-titles .comp-row-inp')].map(e => e.value),
                         point_labels: document.getElementById('comp-ptlabels')?.value || 'auto',
                         legend_title: document.getElementById('comp-legend')?.value || 'Legend',
                         label_col: document.getElementById('comp-label')?.value || document.getElementById('g-label')?.value || '',

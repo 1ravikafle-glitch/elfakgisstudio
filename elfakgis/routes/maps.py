@@ -103,6 +103,8 @@ def compose_map(run_id):
     from elfakgis.geo.render import render_map
     try:
         data = request.get_json(silent=True) or {}
+        if _is_thesis_run(folder, data):
+            return _compose_thesis(folder, data, run_id)
         layout_state = data.get("layout_state")
         if not layout_state:
             layout_state = get_default_layout_state()
@@ -174,6 +176,60 @@ def _load_run_layers(folder):
         pts = None
     return poly, line, pts
 
+def _read_meta(folder):
+    try:
+        with open(os.path.join(folder, "meta.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _is_thesis_run(folder, data):
+    mod = ((data or {}).get("module") or "").strip().upper()
+    if mod == "I":
+        return True
+    if not mod:
+        return (_read_meta(folder).get("module") or "").upper() == "I"
+    return False
+
+
+def _parse_panel_titles(raw):
+    """Normalize Composer panel-title overrides to a 4-list (or None)."""
+    items = _parse_legend_labels(raw)
+    if not items:
+        return None
+    items = [str(s).strip() for s in items][:4]
+    while len(items) < 4:
+        items.append("")
+    return items if any(items) else None
+
+
+def _compose_thesis(folder, data, run_id):
+    """Re-render a Group I thesis map with Composer-edited texts."""
+    import geopandas as gpd
+    from elfakgis.groups.group_i import render_thesis_run
+    meta = _read_meta(folder)
+    shp = os.path.join(folder, "thesis_study.shp")
+    if not os.path.exists(shp):
+        return jsonify({"error": "Thesis study shapefile missing."}), 400
+    study = gpd.read_file(shp)
+    if study.empty:
+        return jsonify({"error": "Thesis study shapefile is empty."}), 400
+    title = (data.get("title") or "").strip() or None
+    legend_title = (data.get("legend_title") or "").strip() or "Legend"
+    legend_labels = _parse_legend_labels(data.get("legend_labels"))
+    panel_titles = _parse_panel_titles(data.get("panel_titles"))
+    cf_name = meta.get("forest_name") or "Study Area"
+    render_thesis_run(
+        os.path.join(folder, "output.png"),
+        meta.get("province") or "", meta.get("district") or "",
+        study, cf_name, title=title,
+        legend_labels=legend_labels, legend_title=legend_title,
+        panel_titles=panel_titles, run_id=run_id)
+    return jsonify({"ok": True,
+                    "png": f"/outputs/{run_id}/output.png?t={uuid.uuid4().hex[:8]}"})
+
+
 def _parse_legend_labels(raw):
     """Accept a JSON list or newline-separated string of legend label
     overrides. Returns a list (may be empty = all auto)."""
@@ -211,6 +267,25 @@ def map_texts(run_id):
             pass
         if module is None:
             module = (meta.get("module") or "A").upper()
+        if module == "I":
+            from elfakgis.groups.group_i import thesis_panel_titles
+            cf = meta.get("forest_name") or "Study Area"
+            dist = meta.get("district") or "District"
+            prov = meta.get("province") or "Province"
+            area_ha = meta.get("area_ha")
+            return jsonify({
+                "ok": True,
+                "module": "I",
+                "title": meta.get("title") or f"Location Map of {cf}",
+                "subtitle": MODULE_SUBTITLES.get("I", ""),
+                "area": f"Area: {area_ha:.2f} ha" if area_ha is not None else "",
+                "legend_title": meta.get("legend_title") or "Legend",
+                "rows": [cf, f"{dist} District", f"{prov} Province", "Nepal"],
+                "panel_titles": thesis_panel_titles(prov, dist),
+                "note": "Thesis map: 4 legend rows (study, district, "
+                        "province, Nepal) + 4 panel headings. "
+                        "Blank = keep auto.",
+            })
         pg, _line, pts = _load_run_layers(folder)
         label_col = None
         if pg is not None and not pg.empty:
@@ -267,6 +342,14 @@ def export_layout():
     # Heavy renderer binds only for real runs (keeps 404s light).
     from elfakgis.geo.render import render_map
     try:
+        if _is_thesis_run(folder, data):
+            resp = _compose_thesis(folder, data, run_id)
+            if isinstance(resp, tuple):
+                return resp
+            pp = os.path.join(folder, "output.png")
+            return send_file(pp, as_attachment=True,
+                             download_name=f"elfak_thesis_{run_id}.png",
+                             mimetype="image/png")
         pg, line_gdf, pts_gdf = _load_run_layers(folder)
         if pg is None:
             return jsonify({"error": "No shapefiles found."}), 400

@@ -20,6 +20,7 @@
 | F — Slope Analysis | `elfakgis/groups/group_f.py` | `POST /upload` (`module=F`) | Slope-class map from boundary + DEM |
 | G — Survey Point Generator | `elfakgis/groups/group_g.py` | `POST /run_g` | Generate vertex / boundary / divider survey points |
 | H — Sample-Point GIS Maps | `elfakgis/groups/group_h.py` | `POST /run_h` | Full map set from boundary + compartments + DEM + satellite + sample points |
+| I — Thesis Locator Map | `elfakgis/groups/group_i.py` | `POST /run_thesis` (+ `GET /thesis_options`) | 4-panel A4-landscape locator: Nepal · province · district · study area |
 
 Every group run produces a run directory `outputs/<run_id>/` containing:
 
@@ -187,6 +188,44 @@ Progress for every group is streamed over `GET /progress/<run_id>` (SSE) via
 
 ---
 
+## I — Thesis Locator Map (`group_i`)
+
+**Entry:** `group_thesis(file_storage, province_sel, district_sel, crs, out_dir, mapping=None, cf_name="Study Area", run_id=None)` → summary dict
+
+- **Use:** thesis location figure — Nepal → province → district → study area
+  (A4 landscape, one N-arrow + alternating scale bar per panel, legend in BR).
+- **Input:** study boundary (SHP-ZIP polygon **or** CSV/Excel X/Y/Order, same
+  auto-detection as A–E) + manual `province` (code 1–7 or official name:
+  Koshi, Madhesh, Bagmati, Gandaki, Lumbini, Karnali, Sudurpashchim) +
+  `district` (dropdown spelling from the base file, e.g. MAKAWANPUR).
+- **Base:** `data/nepal/local_unit.shp` (bundled; 777 local units with
+  `DISTRICT` + `STATE_CODE`; geographic Everest datum). All layers are
+  reprojected to the run's UTM zone (the app's 44N/45N/… setting), so every
+  panel is metric and scale bars are exact. A yellow star marks the study
+  centroid in the Nepal / province / district panels. District-vs-province
+  mismatch returns 400.
+- **Composer:** thesis runs support the Composer tab — `/map_texts` returns
+  the 4 legend rows (study, district, province, Nepal) plus the 4 panel
+  headings (`Map of Nepal / … Province / … District / Study Area`);
+  `/compose` and `/export_layout` re-render the 4-panel figure with edited
+  title, legend title, legend rows and panel headings (`panel_titles`;
+  `comp-module` option `I`). The true study boundary (lavender fill +
+  navy outline, no markers) is overlaid in the Nepal, province and
+  district panels; solid connector arrows start on the nearest point of
+  the true boundary and land with heads on the study panel's frame
+  corners.
+- **How it works:** match province/district → reproject study to base CRS
+  (Everest MUTM metres) → dissolve province/district polygons → render with
+  `map_layout.render_thesis_map` → save `thesis_study.shp` + KMZ.
+- **Output:** `output.png` (A4 landscape, 300 DPI), `thesis_study.shp`,
+  `output.kmz`, `meta.json` (`module="I"`, province/district).
+- **Routes:** `GET /thesis_options` (dropdown data; light, no GIS upload
+  needed) + `POST /run_thesis` (dedicated route like G/H — only Group I loads).
+- **Links:** `core/config.py` (`NEPAL_WARDS_SHP`, `PROVINCE_NAMES`);
+  `map_layout.render_thesis_map`; `geo/geom.py` (`read_input`, `safe_polygon`).
+
+---
+
 ## Shared services (used by groups, live in `geo/` + `core/`)
 
 | Service | Module | What it does | Used by |
@@ -209,6 +248,8 @@ POST /upload ──┬── module=A → group_a ──┐
                └── module=F → group_f ──► render_map(slope_mode) + KMZ (own early return)
 POST /run_g ──► group_g (+ render_map via _g_preview) + KMZ
 POST /run_h ──► process_group_h (validates 5 files first)
+POST /run_thesis ──► group_thesis (+ render_thesis_map) + KMZ
+GET /thesis_options ──► dropdown data (provinces + districts per province)
 GET /compose, POST /export_layout, POST /save_edit ──► render_map re-render
 ```
 

@@ -83,7 +83,20 @@ MODULE_SUBTITLES = {
     "F": "Slope Analysis Map",
     "G": "Survey Point Map",
     "H": "Sample Point Slope Map",
+    "I": "Thesis Locator Map",
 }
+
+# Thesis Map (Group I) palette — matches the reference 4-panel figure.
+THESIS_COLORS = {
+    "nepal": "#FFFFFF",
+    "province": "#00E400",
+    "district": "#FF0000",
+    "study": "#D9CFF7",
+}
+THESIS_FIG_W, THESIS_FIG_H, THESIS_BAR_CM = 11.69, 8.27, 3.0
+# Thesis typography: Times New Roman throughout (bold for headings,
+# normal for body/scale text). Per-call family keeps threaded renders safe.
+_THESIS_FONT = ["Times New Roman", "Liberation Serif", "serif"]
 
 EPS = 1e-9
 
@@ -741,3 +754,408 @@ def _label_polys(ax, poly_gdf, col, fontsize=8, fmt=None):
                 path_effects=[pe.Stroke(linewidth=2.2, foreground="white"),
                               pe.Normal()],
                 zorder=8)
+
+
+# ----------------------------------------------------------------------
+# Thesis Map (Group I) — 4-panel A4-landscape locator figure
+#
+#   TL: Nepal (all districts)   TR: Province (its districts)
+#   BL: District                BR: Study area + legend
+# ----------------------------------------------------------------------
+
+def _thesis_fit(ax, gdf, margin_frac=0.08):
+    """Fit data limits to a fixed panel frame (keeps equal aspect)."""
+    try:
+        b = gdf.total_bounds
+    except Exception:
+        b = None
+    if b is None or len(b) != 4 or not np.all(np.isfinite(b)):
+        return None
+    minx, miny, maxx, maxy = (float(v) for v in b)
+    dw, dh = max(maxx - minx, EPS), max(maxy - miny, EPS)
+    pos = ax.get_position()
+    aspect = (pos.width * THESIS_FIG_W) / max(pos.height * THESIS_FIG_H, EPS)
+    m = max(dw, dh) * margin_frac
+    dwm, dhm = dw + 2 * m, dh + 2 * m
+    if dwm / dhm > aspect:
+        dhm = dwm / aspect
+    else:
+        dwm = dhm * aspect
+    cx, cy = (minx + maxx) / 2, (miny + maxy) / 2
+    ax.set_xlim(cx - dwm / 2, cx + dwm / 2)
+    ax.set_ylim(cy - dhm / 2, cy + dhm / 2)
+    ax.set_aspect("equal", adjustable="datalim")
+    return (cx - dwm / 2, cx + dwm / 2, cy - dhm / 2, cy + dhm / 2)
+
+
+def _thesis_clear_legend(ax, study_gdf, leg_box):
+    """Guarantee the study map never touches the legend.
+
+    leg_box is the legend's true extent in axes fraction (measured
+    after drawing). If the study bbox intersects it (plus padding),
+    expand the view rightward/downward so the map shifts up-left until
+    clear (max 4 nudges). No-op for normal centered studies.
+    """
+    try:
+        if study_gdf is None or study_gdf.empty or not leg_box:
+            return
+        b = study_gdf.total_bounds
+    except Exception:
+        return
+    lx0, ly0, lx1, ly1 = leg_box
+    pad = 0.015
+    lx0, ly0, lx1, ly1 = lx0 - pad, ly0 - pad, lx1 + pad, ly1 + pad
+    for _ in range(6):
+        try:
+            x0, x1 = ax.get_xlim()
+            y0, y1 = ax.get_ylim()
+            if not (math.isfinite(x0) and math.isfinite(x1) and x1 > x0):
+                return
+            sx0 = (b[0] - x0) / (x1 - x0)
+            sy0 = (b[1] - y0) / (y1 - y0)
+            sx1 = (b[2] - x0) / (x1 - x0)
+            sy1 = (b[3] - y0) / (y1 - y0)
+        except Exception:
+            return
+        if sx1 < lx0 or sx0 > lx1 or sy1 < ly0 or sy0 > ly1:
+            return
+        # translate (never rescale): slide the view right so the map
+        # moves left, away from the legend; span (and scale) untouched
+        dx = x1 - x0
+        if sx0 <= 0.02:
+            return  # already at the left frame: stop, legend wins
+        ax.set_xlim(x0 + 0.10 * dx, x1 + 0.10 * dx)
+
+
+def _thesis_m_per_cm(ax, span_m):
+    """Exact ground metres per printed centimetre for a panel."""
+    pos = ax.get_position()
+    width_cm = max(pos.width * THESIS_FIG_W * 2.54, EPS)
+    return max(span_m, EPS) / width_cm
+
+
+def _thesis_north(ax, where="tr"):
+    """Slim two-tone N kite (reference-thesis style).
+
+    where='tr' (default): top-right. where='br': bottom-right — used for
+    the district panel so connector arrows travel through clean space.
+    """
+    if where == "br":
+        cx, cy, H, HW = 0.91, 0.035, 0.085, 0.014
+        n_y = cy + H + 0.010
+        n_va = "bottom"
+    else:
+        cx, cy, H, HW = 0.905, 0.78, 0.115, 0.017
+        n_y = cy + H + 0.012
+        n_va = "bottom"
+    ax.add_patch(plt.Polygon(
+        [(cx, cy + H), (cx - HW, cy), (cx, cy)], closed=True,
+        facecolor="black", edgecolor="black", linewidth=0.8,
+        transform=ax.transAxes, zorder=12))
+    ax.add_patch(plt.Polygon(
+        [(cx, cy + H), (cx + HW, cy), (cx, cy)], closed=True,
+        facecolor="white", edgecolor="black", linewidth=0.8,
+        transform=ax.transAxes, zorder=12))
+    ax.text(cx, n_y, "N", transform=ax.transAxes,
+            ha="center", va=n_va, fontsize=11, fontweight="bold",
+                family=_THESIS_FONT,
+            color="black", zorder=13)
+
+
+def _thesis_study_poly(ax, study_gdf, lw=1.2):
+    """True study-boundary overlay: the polygon's natural shape, lavender
+    fill with a dark navy outline. Linewidth is in points, so the true
+    outline still plots even when the site covers only a few pixels."""
+    try:
+        if study_gdf is None or study_gdf.empty:
+            return
+        study_gdf.plot(ax=ax, facecolor=THESIS_COLORS["study"],
+                       edgecolor="#0d1b6e", linewidth=lw, zorder=10)
+    except Exception:
+        pass
+
+
+def _thesis_panel_title(ax, text):
+    """Small bold heading at the panel's top-left (below the frame)."""
+    ax.text(0.03, 0.94, str(text), transform=ax.transAxes,
+            ha="left", va="top", fontsize=10, fontweight="bold",
+                family=_THESIS_FONT,
+            color="black", zorder=13,
+            path_effects=[pe.Stroke(linewidth=2.0, foreground="white"),
+                          pe.Normal()])
+
+
+def _thesis_nice(v):
+    """Round up to a 1/2/5-series nice number."""
+    if v <= 0 or not math.isfinite(v):
+        return 1.0
+    mag = 10 ** math.floor(math.log10(v))
+    for m in (1, 2, 5, 10):
+        if mag * m >= v:
+            return mag * m
+    return mag * 10
+
+
+def _thesis_scalebar(ax, x1, x0):
+    """Alternating B/W bar + '1 cm = X' label, 100% exact by construction.
+
+    e = exact ground metres per printed cm (final limits ÷ printed panel
+    width). The bar represents the round total T ≈ e × 3 cm and is drawn
+    exactly T/span wide, so every printed millimetre measures truthfully
+    and the '1 cm = e' label is the true scale (3 significant figures).
+    """
+    span_m = max(x1 - x0, EPS)
+    e = _thesis_m_per_cm(ax, span_m)
+    total = _thesis_nice(e * THESIS_BAR_CM)
+    n = 4
+    unit = "Kilometers" if total >= 1000 else "Meters"
+    div = total / 1000.0 if total >= 1000 else total
+    # exact scale text: e is the true ground-per-cm (3 s.f.)
+    if e >= 1000:
+        cm_txt, cm_unit = f"{e / 1000.0:.3g}", "km"
+    else:
+        cm_txt, cm_unit = f"{e:.3g}", "m"
+    ax.text(0.02, 0.145, f"1 cm = {cm_txt} {cm_unit}",
+            transform=ax.transAxes, ha="left", va="bottom",
+            fontsize=7.5, color="black", zorder=13,
+            family=_THESIS_FONT)
+    y, x_start, frac = 0.055, 0.02, (total / span_m)
+    seg = frac / n
+    for i in range(n):
+        ax.add_patch(mpatches.Rectangle(
+            (x_start + i * seg, y), seg, 0.028, transform=ax.transAxes,
+            fill=True, facecolor="black" if i % 2 == 0 else "white",
+            edgecolor="black", linewidth=0.9, zorder=12))
+    for i in range(n + 1):
+        v = div * i / n
+        txt = "0" if i == 0 else f"{v:.4g}"
+        ax.text(x_start + i * seg, y + 0.032, txt, transform=ax.transAxes,
+                ha="center", va="bottom", fontsize=6.5, color="black",
+                    family=_THESIS_FONT,
+                zorder=13)
+    ax.text(x_start + frac + 0.01, y + 0.002, unit, transform=ax.transAxes,
+            ha="left", va="bottom", fontsize=6.5, color="black", zorder=13,
+            family=_THESIS_FONT)
+
+
+def render_thesis_map(path, nepal_districts_gdf, province_gdf,
+                      prov_districts_gdf, district_gdf, study_gdf,
+                      province_name="Province", district_name="District",
+                      cf_name="Study Area", title=None, dpi=DPI,
+                      legend_labels=None, legend_title="Legend",
+                      panel_titles=None):
+    """Render the 4-panel thesis locator map (A4 landscape). Returns path.
+
+    legend_labels: optional Composer overrides in legend order
+    (study, district, province, Nepal); blanks keep auto text.
+    panel_titles: optional 4 per-panel headings
+    (Nepal, province, district, study); blanks keep auto text.
+    """
+    C = THESIS_COLORS
+    fig = plt.figure(figsize=(THESIS_FIG_W, THESIS_FIG_H), dpi=dpi)
+    fig.patch.set_facecolor("white")
+
+    # outer neatline
+    _ov = fig.add_axes([0, 0, 1, 1], frameon=False, zorder=1)
+    _ov.set_xlim(0, 1)
+    _ov.set_ylim(0, 1)
+    _ov.axis("off")
+    _ov.add_patch(mpatches.Rectangle(
+        (0.03, 0.03), 0.94, 0.94, fill=False, edgecolor="black",
+        linewidth=1.4, zorder=2))
+    if title:
+        fig.text(0.5, 0.945, str(title), ha="center", va="top",
+                 fontsize=14, fontweight="bold", color="black",
+                 family=_THESIS_FONT)
+
+    import matplotlib.gridspec as _gs
+    grid = _gs.GridSpec(2, 2, left=0.055, right=0.945, bottom=0.075,
+                        top=0.895 if title else 0.93,
+                        wspace=0.07, hspace=0.14)
+    ax1 = fig.add_subplot(grid[0, 0])  # Nepal
+    ax2 = fig.add_subplot(grid[0, 1])  # Province
+    ax3 = fig.add_subplot(grid[1, 0])  # District
+    ax4 = fig.add_subplot(grid[1, 1])  # Study area
+    panels = (ax1, ax2, ax3, ax4)
+    for ax in panels:
+        ax.set_facecolor("white")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_edgecolor("black")
+            spine.set_linewidth(1.2)
+
+    # ── TL: Nepal ──
+    if nepal_districts_gdf is not None and not nepal_districts_gdf.empty:
+        nepal_districts_gdf.plot(ax=ax1, facecolor=C["nepal"],
+                                 edgecolor="black", linewidth=0.3, zorder=3)
+    if province_gdf is not None and not province_gdf.empty:
+        province_gdf.plot(ax=ax1, facecolor=C["province"],
+                          edgecolor="black", linewidth=0.5, zorder=4)
+    if district_gdf is not None and not district_gdf.empty:
+        district_gdf.plot(ax=ax1, facecolor=C["district"],
+                          edgecolor="black", linewidth=0.5, zorder=5)
+    _thesis_study_poly(ax1, study_gdf, lw=1.2)
+    _thesis_fit(ax1, nepal_districts_gdf)
+
+    # ── TR: Province ──
+    if prov_districts_gdf is not None and not prov_districts_gdf.empty:
+        prov_districts_gdf.plot(ax=ax2, facecolor=C["province"],
+                                edgecolor="black", linewidth=0.5, zorder=3)
+    if district_gdf is not None and not district_gdf.empty:
+        district_gdf.plot(ax=ax2, facecolor=C["district"],
+                          edgecolor="black", linewidth=0.7, zorder=4)
+    _thesis_study_poly(ax2, study_gdf, lw=1.4)
+    _thesis_fit(ax2, prov_districts_gdf
+                  if prov_districts_gdf is not None
+                  and not prov_districts_gdf.empty else province_gdf)
+
+    # ── BL: District ──
+    if district_gdf is not None and not district_gdf.empty:
+        district_gdf.plot(ax=ax3, facecolor=C["district"],
+                          edgecolor="black", linewidth=1.0, zorder=3)
+    _thesis_study_poly(ax3, study_gdf, lw=1.2)
+    _thesis_fit(ax3, district_gdf)
+
+    # ── BR: Study area ──
+    if district_gdf is not None and not district_gdf.empty:
+        try:
+            district_gdf.plot(ax=ax4, facecolor="white",
+                              edgecolor="black", linewidth=1.0, zorder=2)
+        except Exception:
+            pass
+    if study_gdf is not None and not study_gdf.empty:
+        study_gdf.plot(ax=ax4, facecolor=C["study"],
+                       edgecolor="black", linewidth=1.2, zorder=3)
+    _thesis_fit(ax4, study_gdf
+                  if study_gdf is not None and not study_gdf.empty
+                  else district_gdf, margin_frac=0.05)
+
+    # legend inside BR panel (Composer-editable via legend_labels).
+    # Drawn before the measurement draw so its true extent can push
+    # the map clear (legend itself is axes-anchored: unaffected).
+    auto = [str(cf_name), f"{district_name} District",
+            f"{province_name} Province", "Nepal"]
+    if legend_labels:
+        custom = [str(s).strip() for s in legend_labels]
+        labels = [custom[i] if i < len(custom) and custom[i] else auto[i]
+                  for i in range(4)]
+    else:
+        labels = auto
+    fills = [C["study"], C["district"], C["province"], C["nepal"]]
+    leg = ax4.legend(
+        handles=[mpatches.Patch(facecolor=f, edgecolor="black")
+                 for f in fills],
+        labels=labels,
+               loc="lower right", bbox_to_anchor=(0.985, 0.03),
+               fontsize=8.5, title=str(legend_title or "Legend"),
+        title_fontsize=10,
+        prop={"family": _THESIS_FONT},
+        frameon=True, facecolor="white", edgecolor="black",
+        handletextpad=0.5, borderpad=0.6, labelspacing=0.5)
+    leg.get_title().set_family(_THESIS_FONT)
+    leg.get_title().set_fontweight("bold")
+
+    # per-panel headings (Composer-editable; blanks keep auto text)
+    dd = str(district_name).replace("_", " ").title()
+    auto_panels = ["Map of Nepal", f"Map of {province_name} Province",
+                   f"Map of {dd} District", "Map of Study Area"]
+    if panel_titles:
+        custom = [str(s).strip() for s in panel_titles]
+        panels_txt = [custom[i] if i < len(custom) and custom[i] else auto_panels[i]
+                      for i in range(4)]
+    else:
+        panels_txt = auto_panels
+    for ax, txt in zip(panels, panels_txt):
+        if txt:
+            _thesis_panel_title(ax, txt)
+
+    # Equal-aspect with adjustable datalim lets matplotlib expand the data
+    # limits; read them back AFTER a draw so every scale bar is exact.
+    try:
+        fig.canvas.draw()
+    except Exception:
+        pass
+    # true legend extent (axes fraction) → shift the map clear if needed
+    try:
+        bb = leg.get_window_extent(
+            renderer=fig.canvas.get_renderer()).transformed(
+                ax4.transAxes.inverted())
+        _thesis_clear_legend(ax4, study_gdf,
+                             (bb.x0, bb.y0, bb.x1, bb.y1))
+        fig.canvas.draw()
+    except Exception:
+        pass
+    for ax, corner in zip(panels, ("tr", "tr", "br", "tr")):
+        _thesis_north(ax, where=corner)
+        try:
+            x0, x1 = ax.get_xlim()
+            if math.isfinite(x0) and math.isfinite(x1) and x1 > x0:
+                _thesis_scalebar(ax, x1, x0)
+        except Exception:
+            pass
+
+    # connectors: true study boundary (district panel) → study map.
+    # Each tail is the nearest point of the real boundary to the
+    # study panel's frame corner, so arrows always start exactly on
+    # the boundary. Each head stops just off the study polygon inside
+    # the study panel (minimum gap, never touching the map).
+    try:
+        if (study_gdf is not None and not study_gdf.empty
+                and district_gdf is not None and not district_gdf.empty):
+            from shapely.geometry import Point as _Pt
+            from shapely.ops import nearest_points as _nearest
+            fig.canvas.draw()
+            inv = fig.transFigure.inverted()
+            pos4 = ax4.get_position()
+            boundary = study_gdf.geometry.union_all().boundary
+            uni = study_gdf.geometry.union_all()
+            bb = uni.bounds
+            # gap scales with study size, floored so degenerate/tiny
+            # studies still keep a visible minimum gap
+            ax4x0, ax4x1 = ax4.get_xlim()
+            gap = max(0.035 * max(bb[2] - bb[0], bb[3] - bb[1]),
+                      0.004 * max(ax4x1 - ax4x0, EPS))
+            pairs = []
+            for corner in ((pos4.x0 + 0.004, pos4.y1 - 0.004),
+                           (pos4.x0 + 0.004, pos4.y0 + 0.004)):
+                disp = fig.transFigure.transform(corner)
+                dx, dy = ax3.transData.inverted().transform(disp)
+                tail = _nearest(boundary, _Pt(dx, dy))[0]
+                # head: nearest study-polygon point to this corner,
+                # backed off toward the corner by the minimum gap
+                cdx, cdy = ax4.transData.inverted().transform(disp)
+                near = _nearest(boundary, _Pt(cdx, cdy))[0]
+                vx, vy = cdx - near.x, cdy - near.y
+                vl = math.hypot(vx, vy) or 1.0
+                hx, hy = (near.x + vx / vl * gap,
+                          near.y + vy / vl * gap)
+                hp = ax4.transData.transform((hx, hy))
+                hfx, hfy = inv.transform(hp)
+                p = ax3.transData.transform((tail.x, tail.y))
+                fx, fy = inv.transform(p)
+                pairs.append(((fx, fy), (hfx, hfy)))
+            for (fx, fy), corner in pairs:
+                fig.add_artist(plt.Line2D(
+                    [fx, corner[0]], [fy, corner[1]], color="#333333",
+                    linewidth=1.0, linestyle="-", zorder=11, alpha=0.75,
+                    transform=fig.transFigure))
+                # arrowhead hovering off the study map (minimum gap)
+                ang = math.atan2(corner[1] - fy, corner[0] - fx)
+                L, Wd = 0.012, 0.006
+                bx, by = (corner[0] - L * math.cos(ang),
+                          corner[1] - L * math.sin(ang))
+                fig.add_artist(plt.Polygon(
+                    [corner,
+                     (bx - Wd * math.sin(ang), by + Wd * math.cos(ang)),
+                     (bx + Wd * math.sin(ang), by - Wd * math.cos(ang))],
+                    closed=True, facecolor="#333333", edgecolor="#333333",
+                    linewidth=0.5, transform=fig.transFigure, zorder=12,
+                    alpha=0.75))
+    except Exception:
+        pass
+
+    fig.savefig(path, dpi=dpi, facecolor="white")
+    plt.close(fig)
+    gc.collect()
+    return path

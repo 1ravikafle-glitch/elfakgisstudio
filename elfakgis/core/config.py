@@ -38,8 +38,25 @@ GITHUB_DEM_BASE = os.environ.get(
 )
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
 DEM_CACHE_DIR = os.path.join(UPLOAD, "dem_cache")
+NEPAL_DIR = os.environ.get("NEPAL_DIR", os.path.join(_PROJECT_ROOT, "data", "nepal"))
+# Thesis Map base: 777 local units, geographic (Everest datum) with
+# STATE_CODE (1-7) + DISTRICT columns. Rendered layers are reprojected to
+# the run's UTM zone, so maps always follow the app's 44N/45N/… setting.
+NEPAL_BASE_SHP = os.path.join(NEPAL_DIR, "local_unit.shp")
+NEPAL_WARDS_SHP = os.path.join(NEPAL_DIR, "NEPAL_WARDS.shp")  # legacy
 for _d in (UPLOAD, OUTPUT, DEM_CATALOG_DIR, DEM_CACHE_DIR):
     os.makedirs(_d, exist_ok=True)
+
+# Thesis Map (Group I) — official province names by STATE_CODE.
+PROVINCE_NAMES = {
+    1: "Koshi",
+    2: "Madhesh",
+    3: "Bagmati",
+    4: "Gandaki",
+    5: "Lumbini",
+    6: "Karnali",
+    7: "Sudurpashchim",
+}
 
 FIG_W, FIG_H, DPI = 8.27, 11.69, 300  # A4 portrait, 300 DPI
 EPS = 1e-6

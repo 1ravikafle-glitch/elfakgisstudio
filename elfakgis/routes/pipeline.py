@@ -392,6 +392,83 @@ def run_g():
         return jsonify({"error": str(e), "run_id": run_id}), 500
 
 
+@pipeline_bp.route("/thesis_options", methods=["GET"])
+def thesis_options():
+    """Dropdown data for Thesis Map (Group I): provinces + districts."""
+    try:
+        from elfakgis.groups.group_i import thesis_options as _opts
+        return jsonify(_opts())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@pipeline_bp.route("/run_thesis", methods=["POST"])
+@_cool_down(seconds=2)
+@_with_pipeline_sem
+def run_thesis():
+    """Group I — Thesis Locator Map (4-panel A4 landscape)."""
+    from elfakgis.core.config import OUTPUT
+    from elfakgis.core.store import _save_run_meta, _append_run
+    from elfakgis.geo.geom import get_crs
+    run_id = str(uuid.uuid4())
+    _prog(run_id, "Starting Thesis Map...", 0)
+    try:
+        file = request.files.get("file") or request.files.get("boundary")
+        if not file or not file.filename:
+            return jsonify({"error": "No study-area file uploaded.", "run_id": run_id}), 400
+        try:
+            _safe_filename(file.filename)
+        except ValueError as e:
+            return jsonify({"error": str(e), "run_id": run_id}), 400
+        province = request.form.get("province", "").strip()
+        district = request.form.get("district", "").strip()
+        if not province or not district:
+            return jsonify({"error": "Select a province and a district.", "run_id": run_id}), 400
+        cf_name = (request.form.get("cf_name", "").strip()
+                   or os.path.splitext(os.path.basename(file.filename))[0])
+        title = request.form.get("title", "").strip()
+        zone = request.form.get("zone", "44")
+        try:
+            mapping = json.loads(request.form.get("mapping", "{}"))
+        except Exception:
+            mapping = {}
+
+        username = _require_login() or "guest"
+        out = os.path.join(OUTPUT, run_id)
+        os.makedirs(out, exist_ok=True)
+
+        from elfakgis.groups.group_i import group_thesis
+        summary = group_thesis(
+            file, province, district, get_crs(zone), out,
+            mapping=mapping, cf_name=cf_name, run_id=run_id)
+        if title:
+            pass  # title is baked via cf_name map heading; kept for history
+
+        _save_run_meta(out, cf_name, summary.get("area_ha"),
+                       module="I", title=title or f"Location Map of {cf_name}",
+                       legend_title="Legend",
+                       province=summary.get("province"),
+                       district=summary.get("district"),
+                       zone=zone)
+        _append_run(username, run_id, "I",
+                    f"{summary.get('district')} | {summary.get('province')}")
+        _prog(run_id, "Complete.", 100)
+        return jsonify({
+            "run_id": run_id,
+            "download": f"/download/{run_id}",
+            "kmz_url": summary.get("kmz_url"),
+            "summary": summary,
+            "map_editor_url": f"/map_editor/{run_id}",
+        })
+    except ValueError as e:
+        _prog(run_id, f"ERROR: {e}", 0)
+        return jsonify({"error": str(e), "run_id": run_id}), 400
+    except Exception as e:
+        _prog(run_id, f"ERROR: {e}", 0)
+        log.error(f"Thesis map error: {traceback.format_exc()}")
+        return jsonify({"error": str(e), "run_id": run_id}), 500
+
+
 def __getattr__(name):
     """PEP 562: heavy GIS names resolve lazily on first use (fast boot)."""
     import elfakgis.lazy as _lz

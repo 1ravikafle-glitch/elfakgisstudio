@@ -142,6 +142,10 @@
                         🌲 H — Sample Points
                         <span style="background:#059669;color:white;font-size:8px;padding:1px 6px;border-radius:10px;margin-left:4px;">NEW</span>
                     </div>
+                    <div class="nav-item" onclick="switchTab('I')" style="border-left:3px solid var(--purple);">
+                        🗺 I — Thesis Map
+                        <span style="background:#059669;color:white;font-size:8px;padding:1px 6px;border-radius:10px;margin-left:4px;">NEW</span>
+                    </div>
                     <div class="nav-sep"></div>
                     <div class="fg" style="margin-top:6px">
                         <label>UTM Zone / CRS</label>
@@ -178,6 +182,7 @@
                             <div class="mtab" id="mt-F" onclick="switchTab('F')">F</div>
                             <div class="mtab" id="mt-G" onclick="switchTab('G')" style="background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.3);color:#5b21b6">G</div>
                             <div class="mtab" id="mt-H" onclick="switchTab('H')" style="background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.3);color:#5b21b6;">H</div>
+                            <div class="mtab" id="mt-I" onclick="switchTab('I')" style="background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.3);color:#5b21b6;">I</div>
                         </div>
                     </div>
                     <div class="panel-body config-area">
@@ -520,6 +525,37 @@
                                     <button onclick="downloadGroupH('svg')" class="etool">⬇ SVG</button>
                                 </div>
                             </div>
+                        </div><!-- /card-H -->
+
+                        <!-- I -->
+                        <div class="card" id="card-I">
+                            <div class="badge purple">
+                                <strong>🗺 Group I — Thesis Map</strong><br>
+                                4-panel locator: Nepal · Province · District · Study area (A4 landscape).
+                            </div>
+                            <div class="row2">
+                                <div class="fg"><label>Province <span style="color:var(--red);">*</span></label>
+                                    <select id="t-province" onchange="onThesisProvince()"><option value="">— loading… —</option></select></div>
+                                <div class="fg"><label>District <span style="color:var(--red);">*</span></label>
+                                    <select id="t-district"><option value="">— select province first —</option></select></div>
+                            </div>
+                            <div class="fg"><label>Study Area Name (CF)</label>
+                                <input type="text" id="t-cfname" placeholder="e.g. Konchhyongsam CF"></div>
+                            <div class="dz" id="dz-I"><span class="dz-text">📂 Study Boundary — CSV / XLS / ZIP (SHP)</span>
+                                <input type="file" class="fi" data-card="I" id="fi-I" accept=".csv,.xls,.xlsx,.zip"></div>
+                            <div id="t-coord-fields">
+                                <div class="row2">
+                                    <div class="fg"><label>X / Easting</label><select data-key="X" data-card="I"></select></div>
+                                    <div class="fg"><label>Y / Northing</label><select data-key="Y" data-card="I"></select></div>
+                                </div>
+                                <div class="row2">
+                                    <div class="fg"><label>Point Order</label><select data-key="Order" data-card="I"></select></div>
+                                    <div class="fg"><label>&nbsp;</label><div style="font-size:8.5px;color:var(--muted);">ZIP shapefiles skip column mapping.</div></div>
+                                </div>
+                            </div>
+                            <div class="badge"><strong>ℹ️ Output:</strong> A4-landscape locator PNG + study SHP + KMZ</div>
+                            <div class="badge info" style="font-size:8px;color:#1d4ed8;"><strong>📁 File type:</strong> CSV · XLS · XLSX · ZIP</div>
+                            <div class="g-summary" id="t-result-box"></div>
                         </div>
 
                     </div><!-- config-area -->
@@ -698,6 +734,9 @@
                         <div class="fg"><label>Legend rows <button type="button" class="etool" id="comp-rows-refresh" onclick="refreshComposerTexts()" title="Load each legend row from the current map">↻ Rows</button></label>
                             <div id="comp-legend-rows"><div class="comp-rows-hint">Press ↻ to load every legend row for editing (blank = auto).</div></div>
                         </div>
+                        <div class="fg hidden" id="comp-panels-fg"><label>Panel headings (thesis map only)</label>
+                            <div id="comp-panel-titles"></div>
+                        </div>
                         <div class="comp-sec">Labels</div>
                         <div class="fg"><label>Label Feature Column</label><input type="text" id="comp-label" placeholder="e.g. Comp_ID or Forest"></div>
                         <div class="fg"><label>Point numbers (SN)</label>
@@ -717,6 +756,7 @@
                                 <option value="F">F — Slope</option>
                                 <option value="G">G — Survey Points</option>
                                 <option value="H">H — Sample Point Based</option>
+                                <option value="I">I — Thesis Map</option>
                             </select>
                             <div class="comp-mod-hint" id="comp-mod-hint"></div>
                         </div>
@@ -784,7 +824,7 @@
         </div><!-- main -->
     </div><!-- shell -->
 
-    <script defer src="/static/js/app.js?v=20260927-1"></script>
+    <script defer src="/static/js/app.js?v=20260928-3"></script>
     <script defer src="/static/js/dock.js?v=20260927-1"></script>
     <script defer src="/static/js/dock-resize.js?v=20260927-1"></script>
 </body>
