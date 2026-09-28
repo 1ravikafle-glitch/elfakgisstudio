@@ -55,6 +55,25 @@ def progress_stream(run_id):
         }
     )
 
+@maps_bp.route("/result/<run_id>")
+def job_result(run_id):
+    """Poll the final payload of a background pipeline job.
+
+    200 {"done": false} while running; {"done": true, "status": <code>,
+    "payload": {...}} when finished (payload has the exact shape the
+    old blocking POST used to return)."""
+    from elfakgis.core.store import _bg_get
+    try:
+        run_id = _safe_runid(run_id)
+    except Exception:
+        return jsonify({"done": False}), 200
+    r = _bg_get(run_id)
+    if not r:
+        return jsonify({"done": False}), 200
+    return jsonify({"done": bool(r.get("done")),
+                    "status": r.get("status"),
+                    "payload": r.get("payload")}), 200
+
 @maps_bp.route("/geojson/<run_id>")
 def get_geojson(run_id):
     from elfakgis.core.config import OUTPUT

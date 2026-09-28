@@ -585,6 +585,32 @@
             setProgress('Warning', `Map files ready, but ${file} could not be displayed.`, 100, false);
         }
 
+        // ── Background-job POST: 202 accepted instantly, then poll /result ──
+        // Heavy pipelines run server-side in threads (proxy-safe); the POST
+        // only uploads + queues (<1s). Polls are tiny GETs, so a dropped
+        // connection just retries instead of surfacing "Server error 502".
+        async function postJob(url, fd) {
+            const ack = await fetchJSON(url, { method: 'POST', body: fd });
+            if (!ack || !ack.run_id) throw new Error((ack && ack.error) || 'Server did not accept the job.');
+            const runId = ack.run_id;
+            startSSE(runId);
+            const t0 = Date.now(), TIMEOUT = 30 * 60 * 1000;
+            for (;;) {
+                await new Promise(r => setTimeout(r, 2000));
+                let s;
+                try { s = await fetchJSON(`${BASE}/result/${runId}`); }
+                catch (e) {
+                    if (Date.now() - t0 > TIMEOUT) throw e;
+                    continue;
+                }
+                if (s && s.done) {
+                    if (s.status && s.status !== 200) throw new Error((s.payload && s.payload.error) || `Server error ${s.status}`);
+                    return s.payload;
+                }
+                if (Date.now() - t0 > TIMEOUT) throw new Error('Timed out waiting for the server result.');
+            }
+        }
+
         // ── SSE with ETA ──────────────────────────────────────────────────
         function startSSE(runId) {
             const startTime = Date.now();
@@ -788,11 +814,10 @@
             }
 
             try {
-                const data = await fetchJSON(`${BASE}/run_g`, { method: 'POST', body: fd });
+                const data = await postJob(`${BASE}/run_g`, fd);
                 ProgAnim.finish('G');
                 if (data.error) throw new Error(data.error);
                 currentRunId = data.run_id;
-                startSSE(data.run_id);
 
                 const img = document.getElementById('out-img');
                 img.onload = () => { img.style.display = 'block';
@@ -859,11 +884,10 @@
             fd.append('zone', zone);
             fd.append('mapping', JSON.stringify(buildMapping('I')));
             try {
-                const data = await fetchJSON(`${BASE}/run_thesis`, { method: 'POST', body: fd });
+                const data = await postJob(`${BASE}/run_thesis`, fd);
                 ProgAnim.finish('I');
                 if (data.error) throw new Error(data.error);
                 currentRunId = data.run_id;
-                startSSE(data.run_id);
                 const img = document.getElementById('out-img');
                 img.onload = () => { img.style.display = 'block';
                     document.getElementById('empty-msg').style.display = 'none'; };
@@ -902,11 +926,10 @@
 
         async function sendRequest(fd) {
             try {
-                const data = await fetchJSON(`${BASE}/upload`, { method: 'POST', body: fd });
+                const data = await postJob(`${BASE}/upload`, fd);
                 ProgAnim.finish(fd.get('module') || 'A');
                 if (data.error) throw new Error(data.error);
                 currentRunId = data.run_id;
-                startSSE(data.run_id);
                 const img = document.getElementById('out-img');
                 img.style.opacity = '0';
                 img.style.transform = 'scale(.96)';
@@ -1007,12 +1030,10 @@
             setProgress('Group H', 'Uploading and processing...', 10);
             ProgAnim.start('H', 'Uploading and processing...');
             try {
-                const response = await fetch('/run_h', { method: 'POST', body: formData });
-                const data = await response.json();
+                const data = await postJob('/run_h', formData);
                 ProgAnim.finish('H');
                 if (data.error) throw new Error(data.error);
                 currentRunId = data.run_id;
-                startSSE(data.run_id);
                 document.getElementById('dl-btn').href = `/download/${data.run_id}`;
                 document.getElementById('dl-btn').style.display = 'inline-block';
 

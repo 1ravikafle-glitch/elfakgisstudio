@@ -21,10 +21,7 @@ pipeline_bp = Blueprint('pipeline_bp', __name__)
 # UPLOAD ROUTE (handles Groups A–G) with Human-Readable Run ID
 # ----------------------------------------------------------------------
 
-@pipeline_bp.route("/upload", methods=["POST"])
-@_cool_down(seconds=2)
-@_with_pipeline_sem
-def upload():
+def _upload_impl():
     from elfakgis.core.config import DEM_CACHE_DIR, DEM_CATALOG_DIR, OUTPUT
     file = request.files.get("file")
     if not file:
@@ -46,7 +43,7 @@ def upload():
     else:
         base_name = request.form.get("forest") or os.path.splitext(file.filename)[0]
 
-    run_id = _generate_run_id(base_name)
+    run_id = request.form.get("_run_id") or _generate_run_id(base_name)
     # Ensure uniqueness (very unlikely, but safe)
     while os.path.exists(os.path.join(OUTPUT, run_id)):
         run_id = _generate_run_id(base_name + "_" + secrets.token_hex(2))
@@ -252,17 +249,14 @@ def upload():
 # GROUP H ROUTE with Human-Readable Run ID
 # ----------------------------------------------------------------------
 
-@pipeline_bp.route("/run_h", methods=["POST"])
-@_cool_down(seconds=2)
-@_with_pipeline_sem
-def run_h():
+def _run_h_impl():
     # Generate human-readable run ID from boundary file name
     from elfakgis.core.config import OUTPUT, UPLOAD
     boundary_file = request.files.get('boundary')
     if not boundary_file:
         return jsonify({"error": "Missing boundary file"}), 400
     base_name = os.path.splitext(boundary_file.filename)[0]
-    run_id = _generate_run_id(base_name)
+    run_id = request.form.get("_run_id") or _generate_run_id(base_name)
     while os.path.exists(os.path.join(OUTPUT, run_id)):
         run_id = _generate_run_id(base_name + "_" + secrets.token_hex(2))
 
@@ -324,13 +318,10 @@ def run_h():
         _prog(run_id, f"ERROR: {e}", 0)
         return jsonify({"error": str(e), "run_id": run_id}), 500
 
-@pipeline_bp.route("/run_g", methods=["POST"])
-@_cool_down(seconds=2)
-@_with_pipeline_sem
-def run_g():
+def _run_g_impl():
     from elfakgis.core.config import OUTPUT
     from elfakgis.geo.kmz import generate_kmz
-    run_id = str(uuid.uuid4())
+    run_id = request.form.get("_run_id") or str(uuid.uuid4())
     _prog(run_id, "Starting Group G...", 0)
     try:
         if "file" not in request.files:
@@ -402,15 +393,12 @@ def thesis_options():
         return jsonify({"error": str(e)}), 500
 
 
-@pipeline_bp.route("/run_thesis", methods=["POST"])
-@_cool_down(seconds=2)
-@_with_pipeline_sem
-def run_thesis():
+def _run_thesis_impl():
     """Group I — Thesis Locator Map (4-panel A4 landscape)."""
     from elfakgis.core.config import OUTPUT
     from elfakgis.core.store import _save_run_meta, _append_run
     from elfakgis.geo.geom import get_crs
-    run_id = str(uuid.uuid4())
+    run_id = request.form.get("_run_id") or str(uuid.uuid4())
     _prog(run_id, "Starting Thesis Map...", 0)
     try:
         file = request.files.get("file") or request.files.get("boundary")
@@ -467,6 +455,225 @@ def run_thesis():
         _prog(run_id, f"ERROR: {e}", 0)
         log.error(f"Thesis map error: {traceback.format_exc()}")
         return jsonify({"error": str(e), "run_id": run_id}), 500
+
+
+# ----------------------------------------------------------------------
+# Background execution (502 fix): heavy GIS work runs in daemon threads so
+# the POST returns 202 instantly — Render's proxy never waits on a pipeline.
+# The client polls GET /result/<run_id> (maps.py) for the final payload.
+# Route bodies above (_*_impl) run UNCHANGED inside a replayed request
+# context (same form fields + files, same session user).
+# ----------------------------------------------------------------------
+
+_BG_SEM = threading.Semaphore(int(os.environ.get("MAX_BG_JOBS", "2")))
+
+
+def _bg_save(storage, bg_dir, field):
+    """Spool one uploaded file to the bg dir. Returns {field: (name, path)}."""
+    ext = os.path.splitext(storage.filename or "")[1].lower()
+    dest = os.path.join(bg_dir, f"{field}{ext}")
+    storage.save(dest)
+    return {field: (storage.filename, dest)}
+
+
+def _launch_bg(impl, run_id, username, saved, form):
+    from elfakgis.core.store import _bg_pending
+    _bg_pending(run_id)
+    threading.Thread(target=_bg_replay,
+                     args=(impl, run_id, username, saved, form),
+                     daemon=True).start()
+
+
+def _bg_replay(impl, run_id, username, saved, form):
+    """Re-run an impl inside a fresh request context carrying the snapshotted
+    uploads + form + user, then store its JSON payload for /result polling."""
+    from elfakgis import app as _app
+    from elfakgis.core.store import _bg_store
+    handles = []
+    try:
+        _BG_SEM.acquire()
+        try:
+            data = dict(form)
+            for field, (fname, path) in saved.items():
+                h = open(path, "rb")
+                handles.append(h)
+                data[field] = (h, fname)
+            with _app.test_request_context("/_bg", method="POST", data=data):
+                from flask import session as _sess
+                if username and username != "guest":
+                    _sess["username"] = username
+                resp = impl()
+            for h in handles:
+                try:
+                    h.close()
+                except Exception:
+                    pass
+            handles = []
+            if isinstance(resp, tuple):
+                resp_obj, code = resp[0], resp[1]
+            else:
+                resp_obj, code = resp, getattr(resp, "status_code", 200)
+            try:
+                payload = resp_obj.get_json()
+            except Exception:
+                payload = {"run_id": run_id}
+            if not isinstance(payload, dict):
+                payload = {"result": payload}
+            _bg_store(run_id, code if isinstance(code, int) else 200,
+                       payload)
+        finally:
+            try:
+                _BG_SEM.release()
+            except Exception:
+                pass
+    except Exception as e:
+        _prog(run_id, f"ERROR: {e}", 0)
+        try:
+            _bg_store(run_id, 500, {"error": f"Unexpected error: {e}",
+                                    "run_id": run_id})
+        except Exception:
+            pass
+    finally:
+        for h in handles:
+            try:
+                h.close()
+            except Exception:
+                pass
+
+
+def _bg_accept(file_fields):
+    """Snapshot uploads for background launch. Returns (saved, bg_dir)."""
+    from elfakgis.core.config import UPLOAD
+    bg_dir = os.path.join(UPLOAD, f"bg_{uuid.uuid4().hex[:8]}")
+    os.makedirs(bg_dir, exist_ok=True)
+    saved = {}
+    for field in file_fields:
+        storage = request.files.get(field)
+        if storage is not None and storage.filename:
+            saved.update(_bg_save(storage, bg_dir, field))
+    return saved
+
+
+@pipeline_bp.route("/upload", methods=["POST"])
+@_cool_down(seconds=2)
+def upload():
+    """Accept-only wrapper: snapshot uploads, launch job, return 202."""
+    from elfakgis.core.config import OUTPUT
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "No file uploaded."}), 400
+    try:
+        _safe_filename(file.filename)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    module = request.form.get("module", "A")
+    if module == "F":
+        base_name = request.form.get("f_forest") or os.path.splitext(file.filename)[0]
+    else:
+        base_name = request.form.get("forest") or os.path.splitext(file.filename)[0]
+    run_id = _generate_run_id(base_name)
+    while os.path.exists(os.path.join(OUTPUT, run_id)):
+        run_id = _generate_run_id(base_name + "_" + secrets.token_hex(2))
+    with _PROG_LOCK:
+        _PROG[run_id] = []
+    try:
+        saved = _bg_accept(["file", "dem_file"])
+        if "file" not in saved:
+            return jsonify({"error": "No file uploaded.", "run_id": run_id}), 400
+        form = request.form.to_dict()
+        form["_run_id"] = run_id
+        username = _require_login() or "guest"
+        _launch_bg(_upload_impl, run_id, username, saved, form)
+    except Exception as e:
+        return jsonify({"error": str(e), "run_id": run_id}), 400
+    return jsonify({"accepted": True, "run_id": run_id}), 202
+
+
+@pipeline_bp.route("/run_h", methods=["POST"])
+@_cool_down(seconds=2)
+def run_h():
+    """Accept-only wrapper for Group H (5 required files + 1 optional)."""
+    from elfakgis.core.config import OUTPUT
+    boundary_file = request.files.get('boundary')
+    if not boundary_file:
+        return jsonify({"error": "Missing boundary file"}), 400
+    required = ['boundary', 'compartments', 'dem', 'satellite', 'sample_points']
+    for key in required:
+        if key not in request.files or request.files[key].filename == '':
+            return jsonify({"error": f"Missing required file: {key}"}), 400
+    base_name = os.path.splitext(boundary_file.filename)[0]
+    run_id = _generate_run_id(base_name)
+    while os.path.exists(os.path.join(OUTPUT, run_id)):
+        run_id = _generate_run_id(base_name + "_" + secrets.token_hex(2))
+    with _PROG_LOCK:
+        _PROG[run_id] = []
+    try:
+        saved = _bg_accept(required + ['survey_points'])
+        form = request.form.to_dict()
+        form["_run_id"] = run_id
+        username = _require_login() or "guest"
+        _launch_bg(_run_h_impl, run_id, username, saved, form)
+    except Exception as e:
+        return jsonify({"error": str(e), "run_id": run_id}), 400
+    return jsonify({"accepted": True, "run_id": run_id}), 202
+
+
+@pipeline_bp.route("/run_g", methods=["POST"])
+@_cool_down(seconds=2)
+def run_g():
+    """Accept-only wrapper for Group G."""
+    if "file" not in request.files:
+        return jsonify({"error": "No shapefile uploaded."}), 400
+    file = request.files["file"]
+    run_id = str(uuid.uuid4())
+    with _PROG_LOCK:
+        _PROG[run_id] = []
+    try:
+        saved = _bg_accept(["file"])
+        if "file" not in saved:
+            return jsonify({"error": "No shapefile uploaded.", "run_id": run_id}), 400
+        form = request.form.to_dict()
+        form["_run_id"] = run_id
+        username = _require_login() or "guest"
+        _launch_bg(_run_g_impl, run_id, username, saved, form)
+    except Exception as e:
+        return jsonify({"error": str(e), "run_id": run_id}), 400
+    return jsonify({"accepted": True, "run_id": run_id}), 202
+
+
+@pipeline_bp.route("/run_thesis", methods=["POST"])
+@_cool_down(seconds=2)
+def run_thesis():
+    """Accept-only wrapper for Group I (Thesis Locator Map)."""
+    file = request.files.get("file") or request.files.get("boundary")
+    if not file or not file.filename:
+        return jsonify({"error": "No study-area file uploaded."}), 400
+    try:
+        _safe_filename(file.filename)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    province = request.form.get("province", "").strip()
+    district = request.form.get("district", "").strip()
+    if not province or not district:
+        return jsonify({"error": "Select a province and a district."}), 400
+    run_id = str(uuid.uuid4())
+    with _PROG_LOCK:
+        _PROG[run_id] = []
+    try:
+        from elfakgis.core.config import UPLOAD
+        bg_dir = os.path.join(UPLOAD, f"bg_{run_id}")
+        os.makedirs(bg_dir, exist_ok=True)
+        if "file" in request.files and request.files["file"].filename:
+            saved = _bg_save(request.files["file"], bg_dir, "file")
+        else:
+            saved = _bg_save(request.files["boundary"], bg_dir, "boundary")
+        form = request.form.to_dict()
+        form["_run_id"] = run_id
+        username = _require_login() or "guest"
+        _launch_bg(_run_thesis_impl, run_id, username, saved, form)
+    except Exception as e:
+        return jsonify({"error": str(e), "run_id": run_id}), 400
+    return jsonify({"accepted": True, "run_id": run_id}), 202
 
 
 def __getattr__(name):

@@ -35,6 +35,36 @@ def _cleanup_old_prog():
             if len(keys) > 10000:
                 for k in keys[:len(keys)//2]:
                     _PROG.pop(k, None)
+        with _BG_LOCK:
+            try:
+                keys = list(_BG_RESULTS.keys())
+                if len(keys) > 10000:
+                    for k in keys[:len(keys)//2]:
+                        _BG_RESULTS.pop(k, None)
+            except Exception:
+                pass
+
+
+# ── Background job results (502 fix: heavy pipelines run in threads and ──
+# the POST returns 202 instantly; the client polls GET /result/<run_id>) ──
+_BG_RESULTS: dict = {}
+_BG_LOCK = threading.Lock()
+
+def _bg_pending(run_id):
+    with _BG_LOCK:
+        _BG_RESULTS.setdefault(
+            run_id, {"done": False, "status": None,
+                     "payload": None, "ts": time.time()})
+
+def _bg_store(run_id, status, payload):
+    with _BG_LOCK:
+        _BG_RESULTS[run_id] = {"done": True, "status": int(status),
+                               "payload": payload, "ts": time.time()}
+
+def _bg_get(run_id):
+    with _BG_LOCK:
+        r = _BG_RESULTS.get(run_id)
+        return dict(r) if r else None
 
 
 _USERS_LOCK = threading.RLock()
