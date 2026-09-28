@@ -23,6 +23,12 @@ dem_catalog/
 *.kmz
 *.png
 
+# Thesis Map base bundle — required on Render for GET /thesis_options
+!data/nepal/local_unit.shp
+!data/nepal/local_unit.shx
+!data/nepal/local_unit.dbf
+!data/nepal/local_unit.prj
+
 # Auth store contains token hashes — never push
 users.json
 
