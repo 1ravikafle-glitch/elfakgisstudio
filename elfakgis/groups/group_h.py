@@ -184,8 +184,8 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
         raise ValueError("Boundary must contain exactly one polygon.")
     if boundary_gdf.geom_type.iloc[0] not in ['Polygon', 'MultiPolygon']:
         raise ValueError("Boundary must be a polygon.")
-    boundary_gdf = boundary_gdf.buffer(0)
-    boundary_gdf = boundary_gdf[~boundary_gdf.is_empty]
+    boundary_gdf.geometry = boundary_gdf.geometry.buffer(0)
+    boundary_gdf = boundary_gdf[~boundary_gdf.geometry.is_empty]
 
     _prog(run_id, "Loading compartments...", 15)
     compartments_gdf = _extract_shp(compartments_zip, target_crs=crs)
@@ -258,7 +258,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
                      ha='center', va='center', fontsize=6, color='black')
     handles = [mpatches.Patch(facecolor=info['color'], label=info['range']) for cls, info in SLOPE_CLASSES.items()]
     _add_north_arrow(fig1)
-    _add_scale_bar(fig1)
+    _add_scale_bar(fig1, ax1)
     _draw_slope_table_compact(ax1, slope_areas)
     ax1.set_title("Slope Map", fontsize=14, weight='bold')
     fig1.savefig(os.path.join(out_dir, "Slope_Map.png"), dpi=DPI, bbox_inches='tight')
@@ -277,7 +277,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
         ax2.annotate(row['Comp_ID'], xy=(row.geometry.centroid.x, row.geometry.centroid.y),
                      ha='center', va='center', fontsize=6, color='white')
     _add_north_arrow(fig2)
-    _add_scale_bar(fig2)
+    _add_scale_bar(fig2, ax2)
     ax2.set_title("Satellite Map", fontsize=14, weight='bold')
     fig2.savefig(os.path.join(out_dir, "Satellite_Map.png"), dpi=DPI, bbox_inches='tight')
     fig2.savefig(os.path.join(out_dir, "Satellite_Map.pdf"), bbox_inches='tight')
@@ -300,7 +300,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
                      ha='center', va='center', fontsize=6, color='black')
     handles = [mpatches.Patch(facecolor=row['color'], label=row['Comp_ID']) for _, row in comps.iterrows()]
     _add_north_arrow(fig3)
-    _add_scale_bar(fig3)
+    _add_scale_bar(fig3, ax3)
     ax3.legend(handles=handles, title="Compartments", loc='lower right')
     ax3.set_title("Sub-compartment Map", fontsize=14, weight='bold')
     fig3.savefig(os.path.join(out_dir, "SubCompartment_Map.png"), dpi=DPI, bbox_inches='tight')
@@ -318,7 +318,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
         ax4.annotate(row['Point_ID'], xy=(row.geometry.x, row.geometry.y),
                      xytext=(5, 5), textcoords='offset points', fontsize=6, color='red')
     _add_north_arrow(fig4)
-    _add_scale_bar(fig4)
+    _add_scale_bar(fig4, ax4)
     handles = [mpatches.Patch(facecolor='red', label='Sample Plots')]
     ax4.legend(handles=handles, loc='lower right')
     ax4.set_title("Sample Plot Map", fontsize=14, weight='bold')
@@ -338,7 +338,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
             ax5.annotate(row['Point_ID'], xy=(row.geometry.x, row.geometry.y),
                          xytext=(5, 5), textcoords='offset points', fontsize=6, color='blue')
     _add_north_arrow(fig5)
-    _add_scale_bar(fig5)
+    _add_scale_bar(fig5, ax5)
     handles = [mpatches.Patch(facecolor='blue', label='Survey Points')]
     ax5.legend(handles=handles, loc='lower right')
     ax5.set_title("Boundary Survey Point Map", fontsize=14, weight='bold')
@@ -357,7 +357,7 @@ def process_group_h(boundary_zip, compartments_zip, dem_file, satellite_file,
             ax6.annotate(row['Point_ID'], xy=(row.geometry.x, row.geometry.y),
                          xytext=(5, 5), textcoords='offset points', fontsize=6, color='blue')
     _add_north_arrow(fig6)
-    _add_scale_bar(fig6)
+    _add_scale_bar(fig6, ax6)
     handles = [mpatches.Patch(facecolor='blue', label='Survey Points')]
     ax6.legend(handles=handles, loc='lower right')
     ax6.set_title("Survey Point Map", fontsize=14, weight='bold')
