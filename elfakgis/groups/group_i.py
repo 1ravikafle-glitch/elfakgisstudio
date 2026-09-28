@@ -88,6 +88,27 @@ def _load_base():
     return w
 
 
+@lru_cache(maxsize=1)
+def _dissolved_base():
+    """Dissolve once per worker (native base CRS) — every thesis run used to
+    re-dissolve all 777 units + re-union province/district polygons, which is
+    minutes of CPU on small Render instances. Per request we now only
+    reproject these cached layers into the run's UTM zone (seconds)."""
+    w = _load_base()
+    nepal_d = w.dissolve(by="DISTRICT", as_index=False)[
+        ["DISTRICT", "geometry"]]
+    prov_poly, prov_dist = {}, {}
+    for code in sorted(PROVINCE_NAMES):
+        sub = w[w["STATE_CODE"] == code]
+        prov_poly[code] = unary_union(sub.geometry)
+        prov_dist[code] = sub.dissolve(by="DISTRICT", as_index=False)[
+            ["DISTRICT", "geometry"]]
+    dist_poly = {d: unary_union(w[w["DISTRICT"] == d].geometry)
+                 for d in w["DISTRICT"].unique().tolist()}
+    return {"crs": w.crs, "nepal_d": nepal_d, "prov_poly": prov_poly,
+            "prov_dist": prov_dist, "dist_poly": dist_poly}
+
+
 def thesis_panel_titles(prov_name, dist_name):
     """Auto per-panel headings (Composer shows these as edit placeholders)."""
     dd = str(dist_name or "District").replace("_", " ").title()
@@ -107,39 +128,37 @@ def thesis_options():
 
 
 def thesis_layers(province_sel, district_sel, study_gdf):
-    """Dissolve + reproject base layers into the study's CRS.
+    """Reproject cached base layers into the study's CRS.
 
-    Returns (nepal_districts, province_poly, prov_districts, district_poly,
-    study, prov_name, dist_name) — all in study_gdf.crs (the run UTM zone).
+    Heavy dissolve/union runs once per worker (_dissolved_base); each request
+    only reprojects. Returns (nepal_districts, province_poly, prov_districts,
+    district_poly, prov_name, dist_name) — all in study_gdf.crs.
     """
     code, prov_name = _match_province(province_sel)
+    base = _dissolved_base()
     w = _load_base()
-    dist_name = _match_district(district_sel, w["DISTRICT"].unique().tolist())
+    dist_name = _match_district(district_sel, list(base["dist_poly"].keys()))
     target = study_gdf.crs
 
-    prov_units = w[w["STATE_CODE"] == code]
-    if prov_units.empty:
+    if code not in base["prov_poly"]:
         raise ValueError(f"No units found for province '{prov_name}'.")
-    dist_units = w[w["DISTRICT"] == dist_name]
-    if dist_units.empty:
+    if dist_name not in base["dist_poly"]:
         raise ValueError(f"No units found for district '{dist_name}'.")
-    actual_code = int(dist_units["STATE_CODE"].iloc[0])
+    actual_code = int(w[w["DISTRICT"] == dist_name]["STATE_CODE"].iloc[0])
     if actual_code != code:
         actual = PROVINCE_NAMES.get(actual_code, str(actual_code))
         raise ValueError(
             f"District '{dist_name}' is in {actual} Province, "
             f"not {prov_name}. Fix the dropdown selection.")
 
-    nepal_districts = w.dissolve(by="DISTRICT", as_index=False)[
-        ["DISTRICT", "geometry"]].to_crs(target)
+    nepal_districts = base["nepal_d"].to_crs(target)
     province_poly = gpd.GeoDataFrame(
-        geometry=[unary_union(prov_units.geometry)],
-        crs=w.crs).to_crs(target)
-    prov_districts = prov_units.dissolve(by="DISTRICT", as_index=False)[
-        ["DISTRICT", "geometry"]].to_crs(target)
+        geometry=[base["prov_poly"][code]],
+        crs=base["crs"]).to_crs(target)
+    prov_districts = base["prov_dist"][code].to_crs(target)
     district_poly = gpd.GeoDataFrame(
-        geometry=[unary_union(dist_units.geometry)],
-        crs=w.crs).to_crs(target)
+        geometry=[base["dist_poly"][dist_name]],
+        crs=base["crs"]).to_crs(target)
     return (nepal_districts, province_poly, prov_districts, district_poly,
             prov_name, dist_name)
 
