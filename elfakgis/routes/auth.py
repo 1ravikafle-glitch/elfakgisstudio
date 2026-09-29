@@ -95,7 +95,14 @@ def login():
         return jsonify({"error": "Invalid username or password."}), 401
 
     runs = _establish_session(username)
-    is_new = not _runs_for(username) and not _lu().get(username)
+    # Truthful "new" flag: first GIS sign-in ever (tracked), NOT "has no
+    # runs yet" (the old check re-fired on every login until run #1).
+    try:
+        from elfakgis.core import db as _db
+        is_new = _db.mark_seen(username)
+    except Exception as e:
+        log.warning("seen tracking failed (%s)", e)
+        is_new = not _runs_for(username) and not _lu().get(username)
     log.info("Login: %r from %s", username, _get_client_ip())
 
     resp = jsonify({

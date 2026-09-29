@@ -154,6 +154,8 @@ def user_exists(username: str) -> bool:
 _GIS_USERNAME_COLUMNS = (
     ("gis_user_cache", "username"),
     ("gis_runs", "username"),
+    ("gis_seen", "username"),
+    ("gis_remember", "username"),
 )
 
 
@@ -227,6 +229,16 @@ def _ensure_tables() -> bool:
         """
     )
     if ok3 is None:
+        return False
+    ok4 = _exec(
+        """
+        CREATE TABLE IF NOT EXISTS gis_seen (
+            username    VARCHAR(100) PRIMARY KEY,
+            first_seen  TIMESTAMP DEFAULT NOW()
+        )
+        """
+    )
+    if ok4 is None:
         return False
     for table, column in _GIS_USERNAME_COLUMNS:
         if not _ensure_username_length(table, column):
@@ -387,3 +399,35 @@ def remember_revoke(username: str) -> None:
         _exec("DELETE FROM gis_remember WHERE username = :u", {"u": username})
     except Exception:
         pass
+
+
+# ── First-seen tracking (truthful "new account" message) ─────────────
+# Login accounts are owned by Forestry; GIS must not claim "created" on
+# every sign-in. This records each username once: True only the very first
+# time, False forever after. Fails soft to an in-memory set (per worker)
+# so a DB outage can at worst repeat the message, never break login.
+
+_seen_fallback: set = set()
+_seen_lock = threading.Lock()
+
+
+def mark_seen(username: str) -> bool:
+    """Return True exactly once per username (first GIS sign-in ever)."""
+    if not username:
+        return False
+    if _ensure_tables():
+        row = _exec(
+            "INSERT INTO gis_seen (username) VALUES (:u) "
+            "ON CONFLICT (username) DO NOTHING RETURNING username",
+            {"u": username},
+        )
+        if row is not None:
+            try:
+                return row.first() is not None
+            except Exception:
+                return False
+    with _seen_lock:
+        if username in _seen_fallback:
+            return False
+        _seen_fallback.add(username)
+        return True
