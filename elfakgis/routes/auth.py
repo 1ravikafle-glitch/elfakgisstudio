@@ -196,7 +196,9 @@ def remember():
     """Silent re-login from the stay-signed-in cookie.
 
     Used on page load when the Flask session is gone (restart/deploy/expiry)
-    but the long-lived cookie is still valid. 401 → show the login form."""
+    but the long-lived cookie is still valid. Missing/invalid credentials
+    answer 200-with-empty (normal logged-out state, not console noise);
+    only malformed requests are errors."""
     raw = request.cookies.get(REMEMBER_COOKIE, "")
     username = None
     if raw:
@@ -206,7 +208,7 @@ def remember():
         except Exception as e:
             log.warning("remember-me lookup failed (%s)", e)
     if not username:
-        return jsonify({"error": "No stay-signed-in session."}), 401
+        return jsonify({"username": None, "runs": []})
     runs = _establish_session(username)
     log.info("Remember-me sign-in: %r from %s", username, _get_client_ip())
     return jsonify({"username": username, "runs": runs[-20:]})
@@ -230,9 +232,13 @@ def logout():
 
 
 @auth_bp.route("/me")
-@_login_required
 def me():
+    # 200-with-empty (not 401): probed on every page load, and a missing
+    # session is the normal logged-out state — not an error worth logging
+    # to the browser console on each visit.
     u = _require_login()
+    if not u:
+        return jsonify({"username": None, "runs": []})
     return jsonify({"username": u, "runs": _runs_for(u)[-20:]})
 
 

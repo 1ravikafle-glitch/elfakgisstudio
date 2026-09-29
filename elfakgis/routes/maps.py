@@ -97,6 +97,8 @@ def get_geojson(run_id):
     for shp in shps:
         try:
             g = gpd.read_file(shp)
+            from elfakgis.geo.geom import restore_shp_cols
+            g = restore_shp_cols(g)
             if g.crs is not None: g = g.to_crs("EPSG:4326")
             keep = [c for c in g.columns if c in
                     ("Comp_ID","Forest","Class","Slope_Range","Area_ha",
@@ -172,10 +174,11 @@ def _load_run_layers(folder):
     import pandas as pd
 
     def _read(paths):
+        from elfakgis.geo.geom import restore_shp_cols
         gdfs, crs0 = [], None
         for p in paths:
             try:
-                g = gpd.read_file(p)
+                g = restore_shp_cols(gpd.read_file(p))
                 crs0 = crs0 or g.crs
                 gdfs.append(g)
             except Exception:
@@ -506,12 +509,13 @@ def save_edit(run_id):
 
         # --- Re‑render the map ---
         # Load the updated polygon and point layers
-        updated_poly = gpd.read_file(poly_shps[0]) if poly_shps else None
-        updated_point = gpd.read_file(point_shps[0]) if point_shps else None
+        from elfakgis.geo.geom import restore_shp_cols as _restore
+        updated_poly = _restore(gpd.read_file(poly_shps[0])) if poly_shps else None
+        updated_point = _restore(gpd.read_file(point_shps[0])) if point_shps else None
         # Line layer is not editable, we can load it from existing file
         line_shps = [os.path.join(r, f) for r, _, fs in os.walk(folder)
                      for f in fs if f.endswith("_line.shp")]
-        line_gdf = gpd.read_file(line_shps[0]) if line_shps else None
+        line_gdf = _restore(gpd.read_file(line_shps[0])) if line_shps else None
 
         layout_state = data.get("layout_state", get_default_layout_state())
         if updated_poly is not None and not updated_poly.empty:

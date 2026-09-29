@@ -244,6 +244,32 @@ def _enforce_poly_gdf(gdf):
     return result
 
 
+# ESRI DBF caps field names at 10 chars — pyogrio silently launders longer
+# ones on save (Slope_Range→Slope_Rang, Description→Descriptio,
+# Compartments→Compartmen). Reads of OUR outputs must restore the canonical
+# names or downstream filters (GeoJSON keep-list, legends, composer labels)
+# silently drop the data.
+_SHP_TRUNCATED = {
+    "Slope_Rang": "Slope_Range",
+    "Descriptio": "Description",
+    "Compartmen": "Compartments",
+}
+
+
+def restore_shp_cols(gdf):
+    """Rename laundered DBF columns back to canonical (no-op if absent)."""
+    if gdf is None or getattr(gdf, "empty", True):
+        return gdf
+    try:
+        ren = {c: _SHP_TRUNCATED[c] for c in gdf.columns
+               if c in _SHP_TRUNCATED and _SHP_TRUNCATED[c] not in gdf.columns}
+        if ren:
+            return gdf.rename(columns=ren)
+    except Exception:
+        pass
+    return gdf
+
+
 def __getattr__(name):
     """PEP 562: heavy GIS names resolve lazily on first use (fast boot)."""
     import elfakgis.lazy as _lz

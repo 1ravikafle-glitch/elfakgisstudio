@@ -387,6 +387,10 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 @media (max-width: 1100px) {
     .main { flex-direction: column; overflow-y: auto; }
     .dock-divider, .dock-resize { display: none !important; }
+    /* Keep the header (hamburger + brand) tappable above the open nav:
+       the dim bg is z-799 and the panel z-800, so without this the button
+       that opened the menu dies underneath it. */
+    .hdr { z-index: 801; }
     #left-nav-panel, .center, .preview-panel { flex: none !important; width: 100% !important; max-width: none !important; height: auto !important; }
     .preview-panel.composing { flex-basis: auto; }
     #left-nav-panel { display: none; }

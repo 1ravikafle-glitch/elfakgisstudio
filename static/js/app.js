@@ -2963,7 +2963,7 @@
             btn.classList.toggle('open', isOpen);
         }
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.nav-item') && window.innerWidth <= 820) {
+            if (e.target.closest('.nav-item') && window.innerWidth <= 1100) {
                 const panel = document.getElementById('left-nav-panel');
                 if (panel.classList.contains('mobile-open')) {
                     setTimeout(() => toggleMobileNav(), 150);
