@@ -25,6 +25,15 @@ dem_bp = Blueprint('dem_bp', __name__)
 def dem_catalog():
     import urllib.request as _ur
     import json as _json
+    # Cache per worker (10 min): the GitHub listing otherwise costs ~1.5s
+    # on every F-tab visit / page load.
+    global _DEM_CATALOG_CACHE
+    try:
+        cached = _DEM_CATALOG_CACHE
+        if time.time() - cached[0] < 600:
+            return jsonify(cached[1])
+    except NameError:
+        _DEM_CATALOG_CACHE = (0, None)
     github_api_urls = []
     for zone in ("44N", "45N"):
         api_base = os.environ.get("GITHUB_API_DEM",
@@ -66,7 +75,9 @@ def dem_catalog():
                             "url": "",
                         })
     files.sort(key=lambda x: (x["zone"], x["name"]))
-    return jsonify({"files": files, "source": "github"})
+    payload = {"files": files, "source": "github"}
+    _DEM_CATALOG_CACHE = (time.time(), payload)
+    return jsonify(payload)
 
 @dem_bp.route("/dem_fetch", methods=["POST"])
 def dem_fetch():

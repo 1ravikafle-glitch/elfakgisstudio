@@ -190,7 +190,24 @@ def _ensure_username_length(table: str, column: str) -> bool:
     return altered is not None
 
 
+_tables_ok_at = 0.0
+
+
 def _ensure_tables() -> bool:
+    """Create the GIS-side tables if they are missing. Idempotent.
+
+    Result cached per worker (1h): the DDL round-trips otherwise repeat on
+    every login/history/append call (~2s on hosted Postgres)."""
+    global _tables_ok_at
+    if time.time() - _tables_ok_at < 3600:
+        return True
+    ok = _ensure_tables_uncached()
+    if ok:
+        _tables_ok_at = time.time()
+    return ok
+
+
+def _ensure_tables_uncached() -> bool:
     """Create the GIS-side tables if they are missing. Idempotent."""
     ok = _exec(
         """
