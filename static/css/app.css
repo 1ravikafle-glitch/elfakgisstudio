@@ -213,14 +213,36 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 .login-err { min-height: 20px; margin-top: 8px; }
 
 /* ── Module tabs (capsule segmented) ── */
-.mtabs { display: flex; gap: 4px; margin-left: auto; background: var(--hover); border: 1px solid var(--border); border-radius: var(--pill); padding: 4px; }
+.mtabs { display: flex; gap: 4px; margin-left: auto; background: var(--hover); border: 1px solid var(--border); border-radius: var(--pill); padding: 4px; position: relative; }
 .mtab {
     min-width: 38px; height: 38px; padding: 0 12px; border-radius: var(--pill); display: flex; align-items: center; justify-content: center;
     font-family: var(--mono); font-size: 12.5px; font-weight: 700; color: var(--muted-on-tint); cursor: pointer;
-    transition: all .25s var(--spring); border: none; background: transparent;
+    transition: color .25s var(--spring); border: none; background: transparent;
+    position: relative; z-index: 1;
 }
 .mtab:hover { color: var(--accent); }
-.mtab.active { color: var(--on-accent); background: var(--accent-fill); box-shadow: var(--shadow-sm); }
+
+/* ── Travelling selection ─────────────────────────────────────────
+   The control used to repaint the newly selected tab in place, so
+   moving from A to I was a blink rather than a move. One thumb is
+   measured against the real button geometry and then translated, so
+   the highlight slides across the letters in between and settles on
+   the target with the same spring as everything else. The tab keeps
+   only its label colour; the thumb supplies the fill underneath. */
+.mtab-thumb {
+    position: absolute; top: 0; left: 0; z-index: 0; pointer-events: none;
+    background: var(--accent-fill); border-radius: var(--pill);
+    box-shadow: var(--shadow-sm);
+    transition: transform .34s var(--spring), width .34s var(--spring);
+    will-change: transform, width;
+}
+@media (prefers-reduced-motion: reduce) {
+    .mtab-thumb { transition: none; }
+}
+
+/* The active tab supplies the label colour the thumb needs. */
+.mtab.active { color: var(--on-accent); }
+
 
 /* ── Cards (spring entrance, staggered) ── */
 .card { display: none; flex-direction: column; gap: 12px; }

@@ -432,6 +432,57 @@
                 : '<option value="">— no districts —</option>';
         }
 
+        /* ── Travelling mode selection ──────────────────────────────
+           The A–I control used to repaint the chosen tab in place, so
+           stepping from A to I was a blink rather than a move. One
+           thumb is measured against the real button box and translated,
+           so the highlight slides across the letters in between.
+
+           Geometry is read from the DOM rather than derived from a ratio,
+           so the thumb stays exact when a label is wider, when the font
+           loads late, or when the window resizes. */
+        function _modeThumbReduceMotion() {
+            try { return matchMedia('(prefers-reduced-motion: reduce)').matches; }
+            catch (_e) { return false; }
+        }
+
+        function moveModeThumb(animate) {
+            const tabs = document.querySelector('.mtabs');
+            const thumb = tabs && tabs.querySelector('.mtab-thumb');
+            if (!thumb) return;
+            const active = tabs.querySelector('.mtab.active');
+            if (!active) { thumb.style.opacity = '0'; return; }
+            thumb.style.opacity = '';
+            if (!animate || _modeThumbReduceMotion()) {
+                // Suppress the transition for this frame so first paint and
+                // resize land the thumb instead of sliding it across.
+                thumb.style.transition = 'none';
+            }
+            thumb.style.width = active.offsetWidth + 'px';
+            thumb.style.height = active.offsetHeight + 'px';
+            thumb.style.transform = 'translate3d(' + active.offsetLeft + 'px,' + active.offsetTop + 'px,0)';
+            if (!animate || _modeThumbReduceMotion()) {
+                // Force a style flush before restoring, or the browser
+                // coalesces both writes and the thumb animates in on load.
+                void thumb.offsetWidth;
+                thumb.style.transition = '';
+            }
+        }
+
+        function _initModeThumb() {
+            moveModeThumb(false);
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(() => moveModeThumb(false)).catch(() => {});
+            }
+            const tabs = document.querySelector('.mtabs');
+            if (!tabs) return;
+            if (typeof ResizeObserver === 'function') {
+                new ResizeObserver(() => moveModeThumb(false)).observe(tabs);
+            } else {
+                window.addEventListener('resize', () => moveModeThumb(false));
+            }
+        }
+
         function switchTab(t) {
             activeModule = t;
             const old = document.querySelector('.card.active');
@@ -448,6 +499,7 @@
                 if (card) card.classList.add('active');
             }, old && old.id !== 'card-' + t ? 100 : 0);
             document.querySelectorAll('.mtab').forEach(m => m.classList.toggle('active', m.id === 'mt-' + t));
+            moveModeThumb(true);
             document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.getAttribute(
                 'onclick') === `switchTab('${t}')`));
             const hm = document.getElementById('hdr-mod');
@@ -3182,6 +3234,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             const layer = document.getElementById('overlay-layer');
             layer.classList.add('visible');
+
+            // Drawn after the first paint so the mode thumb lands without
+            // animating in from the left on every page load.
+            _initModeThumb();
 
             const img = document.getElementById('out-img');
             img.addEventListener('load', function() {
