@@ -361,6 +361,43 @@ def get_runs(username: str, limit: int = 100) -> Optional[List[dict]]:
         return None
 
 
+def delete_run(username: str, run_id: str) -> Optional[bool]:
+    """
+    Delete one run record owned by ``username``.
+
+    Returns None when there is no database (caller falls back to users.json),
+    True when a row was removed, False when the user had no such run.
+    """
+    if not username or not run_id or not _ensure_tables():
+        return None
+    res = _exec(
+        "DELETE FROM gis_runs WHERE username = :u AND run_id = :r",
+        {"u": username, "r": run_id},
+    )
+    if res is None:
+        return None
+    try:
+        return res.rowcount > 0
+    except Exception:
+        return True
+
+
+def clear_runs(username: str) -> Optional[int]:
+    """
+    Delete every run record for ``username`` and return how many were removed.
+    None means "no database" (caller falls back to users.json).
+    """
+    if not username or not _ensure_tables():
+        return None
+    res = _exec("DELETE FROM gis_runs WHERE username = :u", {"u": username})
+    if res is None:
+        return None
+    try:
+        return max(0, int(res.rowcount))
+    except Exception:
+        return 0
+
+
 # ── Stay-signed-in tokens ────────────────────────────────────────
 # One random token per user (sha256 at rest, 30-day sliding expiry) backs the
 # long-lived HttpOnly cookie. Survives restarts/deploys via shared Postgres;

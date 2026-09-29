@@ -17,8 +17,8 @@ from flask import (Flask, request, jsonify, send_file, send_from_directory,
 from elfakgis.core.config import *
 from elfakgis.core.store import (_prog, _PROG, _PROG_LOCK, _save_run_meta, _append_run,
     _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user,
-    _runs_for)
-from elfakgis.core.security import _safe_filename, _safe_path, _get_client_ip
+    _runs_for, _delete_run, _clear_runs)
+from elfakgis.core.security import (_safe_filename, _safe_path, _get_client_ip, _rate_limit)
 from elfakgis.core.pipeline import _with_pipeline_sem
 from elfakgis.core import autshared
 from elfakgis.geo.kmz import _generate_run_id, _safe_runid
@@ -258,6 +258,59 @@ def me():
 def history():
     u = _require_login()
     return jsonify({"runs": _runs_for(u)})
+
+
+def _purge_run_output(rid):
+    """Delete a run's generated files from disk. Never raises."""
+    try:
+        from elfakgis.core.config import OUTPUT
+        folder = _safe_path(OUTPUT, rid)
+        if folder and os.path.isdir(folder):
+            shutil.rmtree(folder, ignore_errors=True)
+        zip_path = os.path.join(os.path.realpath(OUTPUT), f"{rid}.zip")
+        if os.path.isfile(zip_path):
+            os.remove(zip_path)
+    except Exception as e:
+        # A stuck file must never fail the delete the user asked for.
+        log.warning("Could not purge output files for %r: %s", rid, e)
+
+
+@auth_bp.route("/history/<run_id>", methods=["DELETE"])
+@_login_required
+@_rate_limit(limit=60, window=60)
+def history_delete(run_id):
+    """Delete one run from the signed-in user's history (record + files)."""
+    u = _require_login()
+    try:
+        rid = _safe_runid(run_id)
+    except Exception:
+        return jsonify({"error": "Invalid run ID."}), 400
+    removed = _delete_run(u, rid)
+    if not removed:
+        return jsonify({"error": "Run not found in your history."}), 404
+    _purge_run_output(rid)
+    with _PROG_LOCK:
+        _PROG.pop(rid, None)
+    log.info("History delete: %r run=%s", u, rid)
+    return jsonify({"ok": True, "runs": _runs_for(u)})
+
+
+@auth_bp.route("/history", methods=["DELETE"])
+@_login_required
+@_rate_limit(limit=10, window=60)
+def history_clear():
+    """Delete the signed-in user's entire run history."""
+    u = _require_login()
+    # Snapshot the run IDs first: _clear_runs() empties the store, so the
+    # file purge has to work from what we captured beforehand.
+    rids = [r.get("run_id") for r in _runs_for(u) if r.get("run_id")]
+    removed = _clear_runs(u)
+    for rid in rids:
+        _purge_run_output(rid)
+        with _PROG_LOCK:
+            _PROG.pop(rid, None)
+    log.info("History cleared: %r runs=%s", u, removed)
+    return jsonify({"ok": True, "deleted": removed, "runs": []})
 
 
 @auth_bp.route("/auth-capabilities")

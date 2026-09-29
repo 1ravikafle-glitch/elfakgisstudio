@@ -220,6 +220,56 @@ def _append_run(uname, rid, mod, desc=""):
         record["runs"] = record["runs"][-100:]
         _su(u)
 
+
+def _delete_run(uname, rid):
+    """
+    Remove a single run from a user's history.
+
+    Returns the number of records deleted (0 or 1). Shared Postgres first,
+    users.json as fallback, mirroring _append_run/_runs_for.
+    """
+    if not uname or not rid:
+        return 0
+    try:
+        from elfakgis.core import db as _db
+        got = _db.delete_run(uname, rid)
+        if got is not None:
+            return 1 if got else 0
+    except Exception as e:
+        log.warning("Postgres run delete failed (%s); using users.json", e)
+    with _USERS_LOCK:
+        u = _lu()
+        runs = u.get(uname, {}).get("runs", [])
+        kept = [r for r in runs if r.get("run_id") != rid]
+        if len(kept) == len(runs):
+            return 0
+        u.setdefault(uname, {"username": uname, "runs": []})["runs"] = kept
+        _su(u)
+        return len(runs) - len(kept)
+
+
+def _clear_runs(uname):
+    """Delete a user's entire run history. Returns the number of runs removed."""
+    if not uname:
+        return 0
+    try:
+        from elfakgis.core import db as _db
+        n = _db.clear_runs(uname)
+        if n is not None:
+            return n
+    except Exception as e:
+        log.warning("Postgres history clear failed (%s); using users.json", e)
+    with _USERS_LOCK:
+        u = _lu()
+        record = u.get(uname)
+        if not record:
+            return 0
+        n = len(record.get("runs", []))
+        if n:
+            record["runs"] = []
+            _su(u)
+        return n
+
 def _require_login():
     return session.get("username")
 

@@ -3038,7 +3038,9 @@
         function renderHistory(runs) {
             const body = document.getElementById('hist-body');
             const hcnt = document.getElementById('hcnt');
+            const clr = document.getElementById('hist-clear');
             if (hcnt) hcnt.textContent = runs && runs.length ? ` (${runs.length})` : '';
+            if (clr) clr.hidden = !(runs && runs.length);
             if (!runs || !runs.length) { body.innerHTML =
                 '<div style="text-align:center;color:var(--muted);font-size:11px;padding:40px 20px;font-family:var(--mono)">No runs yet.</div>'; return; }
             body.innerHTML = [...runs].reverse().map((r, i) => {
@@ -3058,8 +3060,68 @@
               <div class="run-actions">
                 <button class="run-act" onclick="loadRunPrev('${r.run_id}')">🗺 Preview</button>
                 <button class="run-act" onclick="triggerDL('${r.run_id}')">⬇ Download</button>
+                <button class="run-act danger" onclick="deleteRun('${r.run_id}')">🗑 Delete</button>
               </div></div>`;
             }).join('');
+        }
+
+        async function deleteRun(rid) {
+            if (!rid) return;
+            if (!confirm('Delete this run?\n\nIts map, downloads and history entry will be removed. This cannot be undone.')) return;
+            try {
+                const d = await fetchJSON(`${BASE}/history/${encodeURIComponent(rid)}`, { method: 'DELETE' });
+                // The deleted run is on screen: drop it so the app never
+                // shows a preview whose files no longer exist.
+                if (currentRunId === rid) clearPreview();
+                renderHistory((d && d.runs) || []);
+                toast(`Deleted run ${String(rid).slice(0, 8)}…`);
+            } catch (e) {
+                alert(e.message || 'Could not delete that run.');
+            }
+        }
+
+        async function clearHistory() {
+            if (!confirm('Delete your entire run history?\n\nEvery run, its map and its downloads will be removed. This cannot be undone.')) return;
+            try {
+                const d = await fetchJSON(`${BASE}/history`, { method: 'DELETE' });
+                if (currentRunId) clearPreview();
+                renderHistory((d && d.runs) || []);
+                toast(`Cleared ${(d && d.deleted) || 0} run(s)`);
+            } catch (e) {
+                alert(e.message || 'Could not clear your history.');
+            }
+        }
+
+        function clearPreview() {
+            currentRunId = null;
+            const img = document.getElementById('out-img');
+            if (img) { img.style.display = 'none'; img.removeAttribute('src'); }
+            const em = document.getElementById('empty-msg');
+            if (em) em.style.display = '';
+            ['dl-btn', 'dl-btn2', 'view-full-btn'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+        }
+
+        function toast(msg) {
+            const t = document.createElement('div');
+            t.textContent = msg;
+            t.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(10px);
+                background:var(--accent-grad);color:#fff;padding:10px 22px;border-radius:30px;
+                font-size:12px;font-weight:600;font-family:var(--sans);z-index:99000;
+                box-shadow:0 4px 20px rgba(16,185,129,.45);opacity:0;
+                transition:all .35s var(--spring)`;
+            document.body.appendChild(t);
+            requestAnimationFrame(() => {
+                t.style.opacity = '1';
+                t.style.transform = 'translateX(-50%) translateY(0)';
+            });
+            setTimeout(() => {
+                t.style.opacity = '0';
+                t.style.transform = 'translateX(-50%) translateY(8px)';
+                setTimeout(() => t.remove(), 400);
+            }, 2600);
         }
 
         function triggerDL(rid) { const a = document.createElement('a');

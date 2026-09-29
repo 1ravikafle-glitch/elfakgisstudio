@@ -39,7 +39,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="/static/css/app.css?v=20260927-1" />
-    <link rel="stylesheet" href="/static/css/forestry.css?v=20260929-7" />
+    <link rel="stylesheet" href="/static/css/forestry.css?v=20260929-8" />
 </head>
 <body>
     <div id="theme-flash"></div>
@@ -48,7 +48,8 @@
     <div id="hist-drawer">
         <div class="drawer-hd">
             <div class="drawer-title">📋 Run History</div>
-            <button class="close-drawer" onclick="toggleHist()">✕</button>
+            <button class="drawer-clear" id="hist-clear" onclick="clearHistory()" hidden>🗑 Clear all</button>
+            <button class="close-drawer" onclick="toggleHist()" aria-label="Close history">✕</button>
         </div>
         <div class="drawer-body" id="hist-body"><div style="text-align:center;color:var(--muted);font-size:11px;padding:40px 20px;font-family:var(--mono)">No runs yet.</div></div>
     </div>
@@ -800,7 +801,7 @@
     </div><!-- shell -->
 
     <script defer src="/static/js/theme.js?v=20260929-2"></script>
-    <script defer src="/static/js/app.js?v=20260929-6"></script>
+    <script defer src="/static/js/app.js?v=20260929-7"></script>
     <script defer src="/static/js/dock.js?v=20260927-1"></script>
     <script defer src="/static/js/dock-resize.js?v=20260927-1"></script>
 </body>

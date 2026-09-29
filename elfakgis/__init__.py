@@ -7,6 +7,7 @@ from datetime import datetime
 
 log = logging.getLogger("elfakgis")
 from flask import Flask, request, jsonify
+from werkzeug.exceptions import HTTPException
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
@@ -89,6 +90,11 @@ def create_app():
 
     @app.errorhandler(Exception)
     def unhandled(e):
+        # Werkzeug's own HTTP errors (404, 405, 400) are control flow, not
+        # crashes. Without this branch they fall through to the catch-all
+        # below and every unknown URL answers 500 instead of its real status.
+        if isinstance(e, HTTPException):
+            return jsonify({"error": e.description or e.name}), e.code
         log.error(f"Unhandled exception: {type(e).__name__}: {e}")
         return jsonify({"error": f"Unexpected error: {type(e).__name__}: {str(e)[:200]}"}), 500
 

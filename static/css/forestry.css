@@ -283,6 +283,40 @@ a:focus-visible,
     color: var(--red);
 }
 
+/* ── History: destructive actions ── */
+.run-act.danger {
+    color: var(--red);
+    border-color: var(--danger-line);
+    background: var(--danger-soft);
+    font-weight: 700;
+}
+.run-act.danger:hover {
+    background: var(--danger-soft);
+    border-color: var(--red);
+    color: var(--red-bright);
+}
+.run-act.danger:focus-visible,
+.drawer-clear:focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 2px;
+}
+.drawer-clear {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    border: 1.5px solid var(--danger-line);
+    background: var(--danger-soft);
+    color: var(--red);
+    border-radius: var(--pill);
+    padding: 6px 12px;
+    cursor: pointer;
+    margin-left: auto;
+    transition: background .18s var(--ease), border-color .18s var(--ease);
+}
+.drawer-clear:hover { border-color: var(--red); color: var(--red-bright); }
+.drawer-clear[hidden] { display: none; }
+.drawer-hd .close-drawer { margin-left: 0; }
+
 /* ── Product identity strip ── */
 .forestry-badge {
     display: inline-flex;
