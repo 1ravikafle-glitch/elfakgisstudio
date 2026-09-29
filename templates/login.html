@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.5,user-scalable=yes" />
+    <title>Sign in · Elfak GIS Pro Studio</title>
+    <meta name="description" content="Sign in to Elfak GIS Pro Studio — the same username and password you use on Forestry PSC Preparation." />
+    <meta name="robots" content="noindex, follow" />
+    <link rel="canonical" href="https://elfakgisstudio.onrender.com/login" />
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)" />
+
+    <!-- Same fonts and stylesheets as the studio, so the sign-in page and
+         the app read as one product. -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" /></noscript>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="/static/css/app.css?v=20260927-1" />
+    <link rel="stylesheet" href="/static/css/forestry.css?v=20260929-7" />
+</head>
+<body class="login-page">
+    <div id="theme-flash"></div>
+
+    <main class="login-stage">
+        <div class="login-card">
+            <div class="login-head">
+                <span class="login-mark" aria-hidden="true">
+                    <svg viewBox="0 0 48 48" fill="none" role="img" aria-label="Elfak GIS logo">
+                        <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#elfakLoginG)"/>
+                        <path d="M24 8 L33 22 H28.5 L35 31 H13 L19.5 22 H15 Z" fill="#fff" opacity="0.96"/>
+                        <rect x="22" y="31" width="4" height="7" rx="1.5" fill="#fff" opacity="0.9"/>
+                        <defs><linearGradient id="elfakLoginG" x1="2" y1="2" x2="46" y2="46" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#2fd06e"/><stop offset="1" stop-color="#16833e"/>
+                        </linearGradient></defs>
+                    </svg>
+                </span>
+                <span class="login-title">Elfak GIS Pro Studio</span>
+            </div>
+            <p class="login-sub">Forestry PSC Preparation · one shared account</p>
+
+            <form id="login-form" autocomplete="on" onsubmit="doLogin();return false;">
+                <div class="login-field">
+                    <label class="login-label" for="login-inp">Username</label>
+                    <input type="text" id="login-inp" class="input" placeholder="e.g. student123" maxlength="40"
+                           autocomplete="username" aria-label="Username" autofocus
+                           oninput="_checkUsernameHint(this.value)">
+                    <p id="login-hint" role="status" aria-live="polite"></p>
+                </div>
+
+                <div class="login-field">
+                    <label class="login-label" for="login-pw">Password</label>
+                    <div class="pw-wrap">
+                        <input type="password" id="login-pw" class="input" placeholder="Your password" maxlength="128"
+                               autocomplete="current-password" aria-label="Password">
+                        <button type="button" class="pw-toggle" id="pw-toggle" onclick="togglePw()"
+                                aria-label="Show password" aria-pressed="false">
+                            <svg id="pw-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <p class="login-err" id="lerr" role="alert"></p>
+                <p id="sugg">Similar names: <span></span> <span></span> <span></span></p>
+
+                <button type="submit" id="login-go" class="btn btn-primary">Sign in</button>
+            </form>
+
+            <p class="login-note">
+                Same account as <a href="https://forestry-pscpreparation.onrender.com/" target="_blank" rel="noopener noreferrer">Forestry PSC Preparation</a> — new here? Your account is created instantly.
+            </p>
+        </div>
+
+        <div class="appearance">
+            <div>
+                <div class="appearance-label">Appearance</div>
+                <div class="seg" role="group" aria-label="Appearance">
+                    <button type="button" class="seg-btn" data-mode="light" aria-pressed="false">Light</button>
+                    <button type="button" class="seg-btn" data-mode="dark" aria-pressed="false">Dark</button>
+                    <button type="button" class="seg-btn" data-mode="system" aria-pressed="false">System</button>
+                </div>
+            </div>
+        </div>
+
+        <p class="login-foot">
+            Just signed in there?
+            <a href="https://forestry-pscpreparation.onrender.com/" target="_blank" rel="noopener noreferrer">Open Forestry PSC &#8599;</a>
+        </p>
+    </main>
+
+    <script defer src="/static/js/theme.js?v=20260929-2"></script>
+    <script defer src="/static/js/login.js?v=20260929-2"></script>
+</body>
+</html>

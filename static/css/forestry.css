@@ -1,117 +1,160 @@
 /* ═══════════════════════════════════════════════════════════════════
-   Elfak GIS Pro Studio — "Field Survey" theme layer
-   Loaded AFTER app.css. Aligns the studio with the Forestry PSC
-   Preparation design system so both products feel like one suite.
+   Elfak GIS Pro Studio — shared-suite theme layer
+   Loaded AFTER app.css. This is the single place where the studio's
+   colours, radius, type and elevation are defined, and it now mirrors the
+   Forestry PSC Preparation design tokens exactly, so both products read as
+   one suite.
 
    Why a separate layer instead of editing app.css:
-   app.css is hand-tuned per module (418 lines, dense). Overriding a
+   app.css is hand-tuned per module (422 lines, dense). Overriding a
    documented token set from one place keeps app.css as the working
    baseline, so this file can be deleted to revert instantly.
 
-   Palette derived from forestry-psc-theme.css and contrast-audited:
-     primary #378152  4.75:1 on white   (old #059669 was 3.77:1 — failed)
-     muted   #4c6158  6.65:1 on white   (old #86868b was 3.62:1 — failed)
-     blue    #1d5fa8  6.45:1 on white   (old #0a84ff was 3.65:1 — failed)
-     amber-t #8a4a08  6.85:1 on white   (old #f5a524 was 1.87:1 — failed)
+   Source of truth: the token block shipped in Forestry PSC's
+   frontend-desktop bundle (moss / parchment / flag / bark families, 12px
+   radius, Inter). Every text-bearing colour is contrast-audited on its own
+   surface, because two of forestry's brightest brand values are fills:
+     accent  #16833e  4.83:1 on white   (moss-700)
+     muted   #71717a  4.63:1 on --bg    (zinc-500)
+     blue    #1d5fa8  6.10:1 on white
+     amber-t #8a4a08  6.57:1 on white
+     red     #a3281c  6.98:1 on white
+   --accent-bright keeps forestry's #21c45d for fills, progress bars and
+   map accents only: white on it is 2.3:1, so it never carries text.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Light tokens ── */
+/* ── Light tokens ──────────────────────────────────────────────────────
+   Aligned with the Forestry PSC Preparation token set: the same neutral
+   zinc scale, the same moss green, the same orange flag accent, the same
+   12px radius and the same Inter face. Both products now read as one suite.
+
+   Contrast note: forestry's primary moss (#21c45d) is 2.3:1 against white,
+   so it lives here as --accent-bright for fills and map accents only. Text
+   and control surfaces use forestry's own moss-700 (#16833e, 4.83:1) — the
+   same hue, and it passes AA. */
 :root {
-    /* Surfaces — green-tinted parchment, matching Forestry PSC */
-    --bg: #eff3ec;
-    --bg2: #e4ebe1;
-    --panel: rgba(250, 251, 249, .86);
-    --panel-solid: #fafbf9;
-    --panel-hd: rgba(18, 33, 27, .035);
+    /* Surfaces — forestry's neutral parchment scale */
+    --bg: #fafafa;
+    --bg2: #f4f4f5;
+    --panel: rgba(255, 255, 255, .88);
+    --panel-solid: #ffffff;
+    --panel-hd: rgba(24, 24, 27, .03);
     --input: #ffffff;
 
-    /* Text — every value meets WCAG AA on its surface */
-    --txt: #12211b;
-    --txt2: #33473d;
-    --muted: #4c6158;          /* was #86868b (3.62:1) — now 6.65:1 */
+    /* Text — forestry's zinc foregrounds, all AA on the surfaces above */
+    --txt: #18181b;          /* 16.8:1 on --bg */
+    --txt2: #3f3f46;         /* 10.0:1 on --bg */
+    --muted: #71717a;        /*  4.6:1 on --bg */
+    /* The AA-passing step of --muted for text sitting on a *tinted* fill.
+       --muted is 4.83:1 on white but only 4.40:1 on --bg2, so any muted
+       label drawn on a track, chip or inset surface needs this instead. */
+    --muted-on-tint: #6b6b74; /*  4.8:1 on --bg2, 5.3:1 on white */
 
     /* Lines */
-    --border: #cbd8cf;
-    --border-strong: #a9bcb0;
+    --border: #e4e4e7;
+    --border-strong: #d4d4d8;
 
-    /* Accent — the Forestry PSC primary green */
-    --accent: #378152;         /* was #059669 (3.77:1) — now 4.75:1 */
-    --accent2: #2f6b45;
-    --accent-strong: #245c38;  /* text used against tinted accent surfaces */
-    --accent-grad: linear-gradient(135deg, #4e9a6b, #378152);
-    --accent-soft: rgba(55, 129, 82, .13);
-    --accent-line: rgba(55, 129, 82, .34);
-    --focus: rgba(55, 129, 82, .55);
-    --hover: rgba(55, 129, 82, .07);
+    /* Accent — forestry's moss family */
+    --accent: #16833e;       /* moss-700 · text, buttons, links · 4.83:1 */
+    --accent2: #12682f;
+    --accent-bright: #21c45d; /* moss-600 · fills, progress, map accents only */
+    --accent-strong: #12682f;
+    --accent-grad: linear-gradient(135deg, #2fd06e, #16833e);
+    --accent-soft: rgba(33, 196, 93, .12);
+    --accent-line: rgba(33, 196, 93, .34);
+    --focus: rgba(33, 196, 93, .5);
+    --hover: rgba(33, 196, 93, .07);
 
-    /* Status colours, all ≥4.5:1 on the surfaces above */
-    --red: #a3281c;            /* was #e5484d */
-    --blue: #1d5fa8;           /* was #0a84ff (3.65:1) */
-    --blue-soft: rgba(29, 95, 168, .12);
-    --blue-line: rgba(29, 95, 168, .34);
-    /* Amber stays vivid for fills/badges, but text uses --amber-text. */
-    --amber: #e68619;
-    --amber-text: #8a4a08;     /* was #f5a524 (1.87:1) — now 6.85:1 */
-    --amber-soft: rgba(138, 74, 8, .12);
-    --amber-line: rgba(138, 74, 8, .32);
-    --danger-soft: rgba(163, 40, 28, .10);
-    --danger-line: rgba(163, 40, 28, .30);
+    /* Status — forestry's destructive / flag families.
+       Text steps are darkened for AA; the bright steps are fills only. */
+    --red: #a3281c;          /* 6.9:1 */
+    --red-bright: #ef4343;   /* forestry destructive */
+    --red-soft: rgba(239, 67, 67, .12);
+    --red-line: rgba(239, 67, 67, .32);
+    --blue: #1d5fa8;         /* 6.1:1 */
+    --blue-bright: #0080ff;  /* forestry info */
+    --blue-soft: rgba(0, 128, 255, .12);
+    --blue-line: rgba(0, 128, 255, .32);
+    --amber: #f98806;        /* forestry secondary · fills, badges */
+    --amber-text: #8a4a08;   /* 6.6:1 */
+    --amber-soft: rgba(249, 136, 6, .12);
+    --amber-line: rgba(249, 136, 6, .32);
+    --danger-soft: rgba(239, 67, 67, .12);
+    --danger-line: rgba(239, 67, 67, .30);
 
-    /* Corners follow Forestry PSC: 14px cards, 11px controls, 8px chips */
-    --r-lg: 14px;
-    --r-md: 11px;
-    --r-sm: 8px;
+    /* Corners — forestry's 4-step Apple radius scale
+       (--apple-radius-sm/md/lg/xl in its variables.css). The old 10px
+       middle step was not in that scale; every value now is. */
+    --r-xl: 20px;   /* apple-radius-xl — the sign-in card */
+    --r-lg: 16px;   /* apple-radius-lg  — panels, cards */
+    --r-md: 12px;   /* apple-radius-md  — buttons, inputs */
+    --r-sm: 8px;    /* apple-radius-sm  — small controls */
 
-    /* Softer, warmer shadows — no glow */
-    --shadow-sm: 0 1px 2px rgba(18, 33, 27, .06);
-    --shadow-md: 0 4px 16px rgba(18, 33, 27, .08);
-    --shadow-lg: 0 12px 40px rgba(18, 33, 27, .12);
+    /* Elevation — forestry's layered, glow-free shadows */
+    --shadow-sm: 0 1px 2px rgba(24, 24, 27, .05);
+    --shadow-md: 0 2px 8px rgba(24, 24, 27, .06), 0 4px 16px rgba(24, 24, 27, .04);
+    --shadow-lg: 0 8px 24px rgba(24, 24, 27, .10), 0 16px 48px rgba(24, 24, 27, .08);
 
-    /* Display face used by Forestry PSC for headings */
-    --display: 'Fraunces', 'SF Pro Display', Georgia, serif;
+    /* Material — forestry's glassmorphism recipe, verbatim */
+    --blur: blur(20px) saturate(180%);
+    --material-bg: rgba(250, 250, 250, .82);
+
+    /* Typeface — forestry loads Inter and uses it for headings and body */
+    --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --display: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: ui-monospace, 'SF Mono', 'Fira Code', Menlo, Consolas, monospace;
 }
 
-/* ── Dark tokens ── */
+/* ── Dark tokens ───────────────────────────────────────────────────────
+   Forestry's .dark scale: identical hues, lifted for a dark canvas. */
 [data-theme="dark"] {
-    --bg: #101e18;
-    --bg2: #0b1712;
-    --panel: rgba(26, 46, 37, .86);
-    --panel-solid: #1a2e25;
-    --panel-hd: rgba(255, 255, 255, .045);
-    --input: #16281f;
+    --bg: #18181b;
+    --bg2: #222226;
+    --panel: rgba(34, 34, 38, .88);
+    --panel-solid: #222226;
+    --panel-hd: rgba(255, 255, 255, .04);
+    --input: #2b2b31;
 
-    --txt: #e9efe6;
-    --txt2: #c3d0c2;
-    --muted: #aab7a4;          /* 6.86:1 on --panel-solid */
+    --txt: #f1f1f3;         /* 15.9:1 on --bg */
+    --txt2: #d4d4d8;
+    --muted: #afafb6;       /*  7.9:1 on --bg */
+    --muted-on-tint: #afafb6; /* same step already clears AA on --bg2 */
 
-    --border: #2a3c34;
-    --border-strong: #3d5449;
+    --border: #3a3a41;
+    --border-strong: #4b4b53;
 
-    --accent: #5eba7d;         /* 7.20:1 on --bg */
+    --accent: #3bde77;      /* forestry dark primary · 10.0:1 on --bg */
     --accent2: #7fca9c;
-    --accent-strong: #8fd6a8;  /* text used against tinted accent surfaces */
-    --accent-grad: linear-gradient(135deg, #7fca9c, #4e9a6b);
-    --accent-soft: rgba(94, 186, 125, .16);
-    --accent-line: rgba(94, 186, 125, .38);
-    --focus: rgba(94, 186, 125, .55);
-    --hover: rgba(94, 186, 125, .10);
+    --accent-bright: #3bde77;
+    --accent-strong: #8fd6a8;
+    --accent-grad: linear-gradient(135deg, #3bde77, #16833e);
+    --accent-soft: rgba(59, 222, 119, .16);
+    --accent-line: rgba(59, 222, 119, .38);
+    --focus: rgba(59, 222, 119, .55);
+    --hover: rgba(59, 222, 119, .10);
 
     --red: #f08a80;
-    --red-soft: rgba(240, 138, 128, .14);
+    --red-bright: #ef4343;
+    --red-soft: rgba(240, 138, 128, .16);
     --red-line: rgba(240, 138, 128, .36);
     --blue: #7ab6f0;
+    --blue-bright: #0080ff;
     --blue-soft: rgba(122, 182, 240, .16);
     --blue-line: rgba(122, 182, 240, .38);
-    --amber: #f0a94a;
-    --amber-text: #f5c37a;     /* readable on dark surfaces */
-    --amber-soft: rgba(245, 195, 122, .16);
-    --amber-line: rgba(245, 195, 122, .38);
-    --danger-soft: rgba(240, 138, 128, .14);
+    --amber: #f9941f;       /* forestry dark secondary */
+    --amber-text: #f5c37a;
+    --amber-soft: rgba(249, 148, 31, .16);
+    --amber-line: rgba(249, 148, 31, .38);
+    --danger-soft: rgba(240, 138, 128, .16);
     --danger-line: rgba(240, 138, 128, .36);
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, .45);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, .5);
-    --shadow-lg: 0 12px 40px rgba(0, 0, 0, .6);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, .5), 0 4px 16px rgba(0, 0, 0, .4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, .6), 0 16px 48px rgba(0, 0, 0, .5);
+
+    /* Dark glass sits on its own canvas, per forestry's .dark override
+       (background 240 10% 8% at 82%), not on the light --bg. */
+    --material-bg: rgba(24, 24, 24, .82);
 }
 
 /* ── Typography: 11px functional floor ──
@@ -301,121 +344,365 @@ h1, h2, h3 {
     letter-spacing: -.01em;
 }
 
-/* ── Desktop login: same card language as Forestry PSC ── */
-@media (min-width: 1101px) {
-    #login-overlay {
-        background: var(--bg);
-        padding: 32px 20px 80px;
-    }
+/* ── Reference component layer ───────────────────────────────────────
+   Ported from Forestry PSC's components.css so the sign-in page and the
+   studio speak the same visual language.
 
-    .login-card {
-        width: min(430px, 100%);
-        background: var(--panel-solid);
-        border: 1.5px solid var(--accent-line);
-        border-radius: 22px;
-        box-shadow: var(--shadow-lg);
-        padding: 36px 34px 30px;
-    }
+   NOTE: the reference's generic `.card` component is deliberately NOT
+   ported. app.css already uses `.card` for the studio's mode panels
+   (hidden until `.active`), so redefining it here would unhide every
+   panel at once. The sign-in card is styled as `.login-card` instead,
+   and it is the same recipe. `.input` and `.btn` are unused by the app
+   shell, so those two carry over verbatim. */
+.input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--txt);
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    min-height: 40px;
+    font-family: var(--sans);
+    outline: none;
+    transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
 
-    .login-head {
-        display: flex;
-        align-items: center;
-        gap: 13px;
-        margin-bottom: 20px;
-    }
+.input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
 
-    .login-mark {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        color: #fff;
-        font-size: 20px;
-        font-weight: 800;
-        background: var(--accent-grad);
-    }
+.input::placeholder { color: var(--muted); }
 
-    .login-title {
-        font-family: var(--display);
-        font-size: 23px;
-        font-weight: 600;
-        letter-spacing: -.01em;
-        color: var(--txt);
-        line-height: 1.15;
-    }
+.input:disabled { opacity: .5; cursor: not-allowed; background: var(--bg2); }
 
-    .login-sub {
-        font-size: 13px;
-        color: var(--muted);
-        margin-top: 4px;
-    }
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 1;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--r-md);
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    user-select: none;
+    transition: filter .15s var(--ease), box-shadow .15s var(--ease), transform .15s var(--ease);
+}
 
-    .login-label {
-        display: block;
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--txt);
-        margin: 0 0 8px;
-    }
+.btn:active { transform: scale(.98); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
 
-    #login-inp,
-    #login-pw {
-        width: 100%;
-        min-height: 52px;
-        box-sizing: border-box;
-        background: var(--input);
-        border: 1px solid var(--border-strong);
-        border-radius: 12px;
-        padding: 13px 15px;
-        font-size: 15px;
-        color: var(--txt);
-        font-family: var(--sans);
-        outline: none;
-    }
+.btn-primary { background: var(--accent); color: #fff; }
 
-    #login-inp { margin-bottom: 16px; }
-    #login-pw { margin-bottom: 6px; }
+.btn-primary:hover:not(:disabled) {
+    background: var(--accent2);
+    box-shadow: 0 6px 24px var(--accent-line), 0 2px 8px var(--accent-soft);
+    transform: scale(1.02);
+}
 
-    #login-inp:focus,
-    #login-pw:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px var(--accent-soft);
-    }
+[data-theme="dark"] .btn-primary { color: #0f241b; }
 
-    #login-go {
-        width: 100%;
-        min-height: 52px;
-        margin-top: 18px;
-        border: none;
-        border-radius: 12px;
-        background: var(--accent);
-        color: #fff;
-        font-size: 16px;
-        font-weight: 700;
-        font-family: var(--sans);
-        cursor: pointer;
-    }
+.btn-ghost { background: transparent; color: var(--txt); }
+.btn-ghost:hover { background: var(--hover); }
 
-    #login-go:hover { background: var(--accent2); }
-    #login-go:disabled { opacity: .65; cursor: wait; }
+/* ── Sign-in page ───────────────────────────────────────────────────
+   Mirrors Forestry PSC's Login.tsx: a calm centred stage, a 400px card
+   at the 20px radius, 44px controls, and the same foot copy. The studio
+   keeps its own username-format hint and "name taken" suggestions, which
+   the reference does not need. */
+body.login-page {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    font-family: var(--sans);
+    background:
+        radial-gradient(circle at 50% 40%, var(--accent-soft), transparent 70%),
+        var(--bg);
+}
 
-    [data-theme="dark"] #login-go { color: #0f241b; }
+.login-stage {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
 
-    .login-note {
-        margin: 18px 0 0;
-        text-align: center;
-        font-size: 13px;
-        line-height: 1.65;
-        color: var(--muted);
-    }
+/* The reference's own card recipe, minus the class-name collision.
+   app.css still animates this in from below; the entrance below is the
+   quieter version the reference uses (opacity + scale, no rise). */
+.login-card {
+    width: 100%;
+    background: var(--panel-solid);
+    border: 1px solid var(--border);
+    padding: 40px;
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-lg);
+    animation: cardIn .4s var(--ease) both;
+}
 
-    .login-note a {
-        color: var(--accent);
-        font-weight: 700;
-    }
+@keyframes cardIn {
+    from { opacity: 0; transform: scale(.98); }
+    to   { opacity: 1; transform: none; }
+}
+
+.login-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.login-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--r-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.login-mark svg { width: 36px; height: 36px; display: block; }
+
+.login-title {
+    font-family: var(--display);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--txt);
+    line-height: 1.2;
+}
+
+.login-sub {
+    font-size: .875rem;
+    color: var(--muted);
+    margin: 0 0 28px;
+}
+
+.login-label {
+    display: block;
+    font-size: .8125rem;
+    font-weight: 500;
+    color: var(--txt);
+    margin-bottom: 6px;
+}
+
+.login-field { margin-bottom: 16px; }
+
+/* 44px controls, 12px corners, 44px right padding leaves room for the
+   reveal-password button. min-height is pinned too: app.css raises bare
+   `input` to 46px, and min-height beats height, which left the username
+   field a pixel taller than the password one. */
+#login-inp,
+#login-pw {
+    height: 44px;
+    min-height: 44px;
+    padding-right: 44px;
+}
+
+#login-inp { margin-bottom: 0; }
+
+.pw-wrap { position: relative; }
+
+.pw-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: var(--r-sm);
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+}
+
+.pw-toggle:hover { color: var(--txt); background: var(--hover); }
+.pw-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pw-toggle svg { width: 18px; height: 18px; }
+
+#login-hint {
+    font-size: .8125rem;
+    color: var(--muted);
+    font-family: var(--sans);
+    min-height: 18px;
+    margin: 6px 0 0;
+    padding-left: 2px;
+    transition: color .3s var(--ease);
+}
+
+.login-err {
+    display: none;
+    font-size: .8125rem;
+    font-weight: 500;
+    color: var(--red);
+    margin-top: 8px;
+}
+
+#sugg {
+    margin-top: 8px;
+    font-size: .8125rem;
+    color: var(--muted);
+    display: none;
+}
+
+#sugg span {
+    cursor: pointer;
+    color: var(--accent);
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: var(--r-sm);
+}
+
+#sugg span:hover { background: var(--hover); }
+
+#login-go {
+    width: 100%;
+    height: 44px;
+    margin-top: 16px;
+    font-size: .875rem;
+    font-weight: 600;
+}
+
+/* In-flight state: a ring that spins beside the label, matching the
+   reference's signing-in affordance. */
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    vertical-align: -2px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#login-go.is-loading { cursor: progress; }
+
+.login-note {
+    font-size: .75rem;
+    color: var(--muted);
+    text-align: center;
+    margin: 20px 0 0;
+    line-height: 1.6;
+}
+
+.login-note a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.login-note a:hover { text-decoration: underline; }
+
+/* ── Appearance: the same 3-mode Light / Dark / System selector the
+      reference puts under its own sign-in form. ── */
+.appearance {
+    display: flex;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+.appearance > div { width: min(320px, 100%); }
+
+.appearance-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+.seg {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    padding: 3px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+}
+
+.seg-btn {
+    background: none;
+    border: none;
+    border-radius: var(--r-sm);
+    padding: 7px 4px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    /* --muted-on-tint, not --muted: these labels sit on the --bg2 track,
+       where --muted lands at 4.40:1 and fails AA. */
+    color: var(--muted-on-tint);
+    cursor: pointer;
+    transition: background .18s var(--ease), color .18s var(--ease);
+}
+
+.seg-btn:hover { color: var(--txt); }
+
+.seg-btn[aria-pressed="true"] {
+    background: var(--panel-solid);
+    color: var(--txt);
+    box-shadow: var(--shadow-sm);
+}
+
+.seg-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.login-foot {
+    font-size: .75rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+}
+
+.login-foot a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.login-foot a:hover { text-decoration: underline; }
+
+/* Narrow phones: the reference keeps the card padding, but 40px of it
+   on a 360px screen leaves ~40px of input. Trim the sides only. */
+@media (max-width: 480px) {
+    .login-card { padding: 28px 22px 24px; }
+}
+
+/* ── Header: the reference shell's 56px translucent bar ─────────────
+   Forestry PSC's header is 56px tall over `background / 0.82` with
+   blur(20px) saturate(180%). The studio carries more controls, so the
+   row keeps its padding but adopts the height and the material. */
+.hdr {
+    min-height: 56px;
+    background: var(--material-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+}
+
+/* Panels use the same material recipe. */
+.panel {
+    background: var(--material-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+}
+
+/* Without backdrop-filter the translucent fill goes muddy against the
+   map, so fall back to the solid surface. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .hdr, .panel { background: var(--panel-solid); }
 }
 
 /* ── Respect reduced motion across the layer ── */
@@ -425,4 +712,38 @@ h1, h2, h3 {
         animation-iteration-count: 1 !important;
         transition-duration: .01ms !important;
     }
+}
+
+/* ── Text-bearing green surfaces: flat, not gradient ────────────────
+   app.css paints the primary button, the active tab and the active
+   mobile tab with --accent-grad. A 135° gradient's light end drops
+   white text to roughly 2.3:1, so every control that carries a label
+   gets the flat AA-safe moss instead. The two-tone treatment stays on
+   things that hold no text: the progress fill and the brand mark. */
+.run-btn,
+.ptab.on,
+.mtab.active,
+.etool.primary,
+.run-act.primary,
+.dl-btn.primary {
+    background: var(--accent);
+}
+
+.run-btn:hover,
+.ptab.on:hover,
+.mtab.active:hover,
+.etool.primary:hover,
+.run-act.primary:hover,
+.dl-btn.primary:hover {
+    filter: brightness(1.1);
+}
+
+.prog-bar-fill {
+    background: linear-gradient(90deg, var(--accent-bright), var(--accent));
+}
+
+/* The empty-canvas message sits on the preview panel, where --muted
+   lands at 4.4:1. One step darker clears AA without changing the feel. */
+.empty-msg {
+    color: var(--txt2);
 }

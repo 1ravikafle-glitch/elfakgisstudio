@@ -5,13 +5,15 @@ from collections import defaultdict, OrderedDict
 from functools import wraps
 from datetime import datetime
 from flask import (Flask, request, jsonify, send_file, send_from_directory,
-                   render_template, session, Response, stream_with_context, abort, g)
+                   render_template, session, Response, stream_with_context, abort, g,
+                   redirect)
 from elfakgis.core.config import *
 from elfakgis.core.store import (_prog, _PROG, _PROG_LOCK, _save_run_meta, _append_run,
     _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user)
 from elfakgis.core.security import _rate_limit, _cool_down, _safe_filename, _safe_path, _validate_username, _get_client_ip
 from elfakgis.core.pipeline import _with_pipeline_sem
 from elfakgis.geo.kmz import _generate_run_id, _safe_runid
+from elfakgis.routes.auth import REMEMBER_COOKIE, _establish_session
 
 log = logging.getLogger("elfakgis")
 
@@ -48,9 +50,48 @@ def map_editor(run_id):
 # ROUTES
 # ----------------------------------------------------------------------
 
+def _signed_in_username():
+    """The username for this request, or None.
+
+    A valid Flask session wins. If the session is gone (restart, deploy,
+    expiry) the long-lived stay-signed-in cookie is honoured here, in the
+    request, so a hard refresh lands straight on the app instead of bouncing
+    the visitor through a login form.
+    """
+    username = _require_login()
+    if username:
+        return username
+    raw = request.cookies.get(REMEMBER_COOKIE, "")
+    if not raw:
+        return None
+    try:
+        from elfakgis.core import db as _db
+        username = _db.remember_who(raw.strip())
+    except Exception as e:
+        log.warning("remember-me lookup failed (%s)", e)
+        return None
+    if username:
+        _establish_session(username, load_runs=False)
+        log.info("Remember-me sign-in on page load: %r from %s", username, _get_client_ip())
+    return username
+
+
 @pages_bp.route("/")
 def home():
+    """The studio itself. Never renders a login form: signed-out visitors
+    are sent to the dedicated /login page, so a hard refresh while signed in
+    cannot flash the login screen."""
+    if not _signed_in_username():
+        return redirect("/login")
     return render_template("index.html")
+
+
+@pages_bp.route("/login")
+def login_page():
+    """Standalone sign-in page — its own URL, its own layout, no app shell."""
+    if _signed_in_username():
+        return redirect("/")
+    return render_template("login.html")
 
 # ABOUT, ROBOTS, SITEMAP
 # ----------------------------------------------------------------------

@@ -3,19 +3,20 @@
            (Includes layout editor, export, modules A-H, login, history, etc.)
            ================================================================ */
 
-        // ── Apply theme IMMEDIATELY ──
-        (function() {
-            if (localStorage.getItem('elfak-theme') === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-            }
-        })();
-
         const BASE = window.location.origin;
 
         // ── robust JSON fetch wrapper ──
         async function fetchJSON(url, options = {}) {
             const res = await fetch(url, options);
             if (!res.ok) {
+                // The session can die mid-use (expired, redeployed). The app
+                // page is only served to a live session, so the honest move
+                // is to leave for the sign-in page rather than keep showing
+                // a studio that can no longer save anything.
+                if (res.status === 401 && location.pathname !== '/login') {
+                    location.replace('/login');
+                    await new Promise(() => {});   // stop this call chain
+                }
                 const text = await res.text();
                 let errMsg = `Server error ${res.status}`;
                 try {
@@ -131,51 +132,6 @@
                 (elRect.left + elRect.width / 2 - rect.left) / rect.width,
                 (elRect.top + elRect.height / 2 - rect.top) / rect.height
             ];
-        }
-
-        let _dark = localStorage.getItem('elfak-theme') === 'dark';
-
-        function _applyTheme(dark, animate) {
-            _dark = dark;
-            const html = document.documentElement;
-            const flash = document.getElementById('theme-flash');
-            const icon = document.getElementById('theme-icon');
-            const label = document.getElementById('theme-label');
-
-            if (animate && flash) {
-                flash.style.opacity = '1';
-                setTimeout(() => { flash.style.opacity = '0'; }, 260);
-            }
-
-            if (dark) {
-                html.setAttribute('data-theme', 'dark');
-                if (icon) { icon.textContent = '☀️';
-                    icon.style.transform = 'rotate(180deg) scale(1.2)'; }
-                if (label) label.textContent = 'Light';
-            } else {
-                html.removeAttribute('data-theme');
-                if (icon) { icon.textContent = '🌙';
-                    icon.style.transform = 'rotate(0deg) scale(1)'; }
-                if (label) label.textContent = 'Dark';
-            }
-            localStorage.setItem('elfak-theme', dark ? 'dark' : 'light');
-            try {
-                if (typeof leafMap !== 'undefined' && leafMap) {
-                    leafMap.eachLayer(l => {
-                        if (l && l._url) l.setOpacity(dark ? 0.80 : 1.0);
-                    });
-                }
-            } catch (_e) {}
-        }
-
-        function toggleTheme() {
-            const btn = document.getElementById('theme-btn');
-            const r = document.createElement('span');
-            r.className = 'theme-ripple';
-            r.style.cssText = 'width:80px;height:80px;left:50%;top:50%;margin:-40px 0 0 -40px';
-            btn.appendChild(r);
-            setTimeout(() => r.remove(), 500);
-            _applyTheme(!_dark, true);
         }
 
         function _addNavRipple(el, e) {
@@ -2109,7 +2065,7 @@
             layer.classList.toggle('editing', _layoutEditActive);
             editBtn.textContent = _layoutEditActive ? '✕ Done Editing' : '✥ Edit Layout';
             editBtn.style.background = _layoutEditActive ? 'rgba(16,185,129,.18)' : '';
-            editBtn.style.borderColor = _layoutEditActive ? 'var(--mint)' : '';
+            editBtn.style.borderColor = _layoutEditActive ? 'var(--accent)' : '';
             resetBtn.style.display = _layoutEditActive ? '' : 'none';
             hint.style.display = _layoutEditActive ? '' : 'none';
 
@@ -2955,7 +2911,7 @@
                 URL.revokeObjectURL(url);
 
                 status.textContent = '✅ Map exported successfully!';
-                status.style.color = 'var(--mint)';
+                status.style.color = 'var(--accent)';
             } catch (e) {
                 status.textContent = '❌ Error: ' + e.message;
                 status.style.color = 'var(--red)';
@@ -2998,148 +2954,10 @@
             }
         });
 
-        // ── Login ──
-        let _hintTimer = null;
-
-        function _checkUsernameHint(val) {
-            const hint = document.getElementById('login-hint');
-            if (!hint) return;
-            clearTimeout(_hintTimer);
-            if (!val || val.length < 2) { hint.textContent = '';
-                return; }
-            if (val.length < 2) { hint.textContent = 'Minimum 2 characters';
-                hint.style.color = 'var(--red)';
-                return; }
-            if (val.length > 40) { hint.textContent = 'Maximum 40 characters';
-                hint.style.color = 'var(--red)';
-                return; }
-            if (!/^[A-Za-z0-9][A-Za-z0-9 _-]*$/.test(val)) {
-                hint.textContent = 'Letters, numbers, spaces, - or _ only. Must start with letter/digit.';
-                hint.style.color = 'var(--red)';
-                return;
-            }
-            hint.textContent = '✓ Valid username format';
-            hint.style.color = 'var(--mint)';
-        }
-
-        let _suggs = [];
-
-        function trySugg(i) {
-            const n = _suggs[i];
-            if (!n) return;
-            const inp = document.getElementById('login-inp');
-            inp.value = n;
-            inp.classList.remove('taken');
-            document.getElementById('lerr').style.display = 'none';
-            document.getElementById('sugg').style.display = 'none';
-            _checkUsernameHint(n);
-            doLogin();
-        }
-
-        async function doLogin() {
-            const inp = document.getElementById('login-inp');
-            const pwEl = document.getElementById('login-pw');
-            const name = inp.value.trim();
-            const password = pwEl ? pwEl.value : '';
-            const errEl = document.getElementById('lerr');
-            const sugg = document.getElementById('sugg');
-            const btn = document.getElementById('login-go');
-            const hint = document.getElementById('login-hint');
-
-            inp.classList.remove('taken');
-            errEl.className = 'login-err';
-            errEl.style.display = 'none';
-            sugg.style.display = 'none';
-
-            if (!name) {
-                errEl.textContent = 'Please enter a username.';
-                errEl.style.display = 'block';
-                return;
-            }
-            if (name.length < 2) {
-                errEl.textContent = 'Username must be at least 2 characters.';
-                errEl.style.display = 'block';
-                return;
-            }
-            if (!/^[A-Za-z0-9][A-Za-z0-9 _-]*$/.test(name)) {
-                errEl.textContent = 'Invalid characters. Use letters, numbers, spaces, - or _.';
-                errEl.style.display = 'block';
-                return;
-            }
-            if (!password) {
-                if (pwEl) pwEl.classList.add('taken');
-                errEl.textContent = 'Please enter your password.';
-                errEl.style.display = 'block';
-                if (pwEl) pwEl.focus();
-                return;
-            }
-            if (pwEl) pwEl.classList.remove('taken');
-
-            btn.disabled = true;
-            btn.textContent = 'Checking…';
-            if (hint) { hint.textContent = 'Connecting to server…';
-                hint.style.color = 'var(--muted)'; }
-
-            try {
-                const data = await fetchJSON(`${BASE}/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: name, password: password })
-                });
-
-                if (data.taken) {
-                    inp.classList.add('taken');
-                    errEl.className = 'login-err taken-msg';
-                    errEl.textContent = data.error || `Could not sign in as "${name}".`;
-                    errEl.style.display = 'block';
-                    _suggs = _genSuggs(name);
-                    const spans = sugg.querySelectorAll('span');
-                    _suggs.forEach((s, i) => { if (spans[i]) spans[i].textContent = s; });
-                    sugg.style.display = 'block';
-                    if (hint) { hint.textContent = 'Choose a different name below:';
-                        hint.style.color = 'var(--amber)'; }
-                    btn.disabled = false;
-                    btn.textContent = 'Enter Studio →';
-                    return;
-                }
-
-                if (data.error) throw new Error(data.error);
-
-                if (hint) {
-                    hint.textContent = data.is_new ? '✓ Account created!' : `✓ Welcome back, ${data.username}!`;
-                    hint.style.color = 'var(--mint)';
-                }
-                setTimeout(() => onLoginSuccess(data.username, data.runs || [], data.is_new), 300);
-
-            } catch (e) {
-                errEl.textContent = e.message || 'Connection error. Please try again.';
-                errEl.style.display = 'block';
-                if (hint) { hint.textContent = ''; }
-                btn.disabled = false;
-                btn.textContent = 'Enter Studio →';
-            }
-        }
-
-        function _genSuggs(base) {
-            const clean = base.replace(/[_-]?\d+$/, '').trim() || base;
-            const yr = new Date().getFullYear() % 100;
-            const rn = Math.floor(Math.random() * 89 + 10);
-            return [
-                clean + '_' + rn,
-                clean + yr,
-                clean + '_GIS'
-            ];
-        }
-
+        // Paint the signed-in chrome. This page is only ever served to a
+        // verified session (see pages.home), so there is no login form here
+        // to dismiss and no password in the DOM to clear.
         function onLoginSuccess(username, runs, isNew) {
-            // Don't leave the password sitting in the DOM.
-            const pwEl = document.getElementById('login-pw');
-            if (pwEl) pwEl.value = '';
-            const ov = document.getElementById('login-overlay');
-            ov.style.transition = 'opacity .45s';
-            ov.style.opacity = '0';
-            setTimeout(() => { ov.style.display = 'none'; }, 460);
-
             document.getElementById('user-bar').style.display = 'flex';
             const uname = document.getElementById('uname');
             uname.textContent = username;
@@ -3165,7 +2983,7 @@
             const toast = document.createElement('div');
             toast.textContent = isNew ? `Welcome, ${username}! Account created.` : `Welcome back, ${username}!`;
             toast.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(10px);
-                background:var(--mint-g);color:white;padding:10px 22px;border-radius:30px;
+                background:var(--accent-grad);color:white;padding:10px 22px;border-radius:30px;
                 font-size:12px;font-weight:600;font-family:var(--sans);z-index:99000;
                 box-shadow:0 4px 20px rgba(16,185,129,.45);opacity:0;
                 transition:all .35s var(--spring)`;
@@ -3184,41 +3002,22 @@
         async function doLogout() {
             if (!confirm('Sign out?')) return;
             try { await fetchJSON(`${BASE}/logout`, { method: 'POST' }); } catch {}
-            document.getElementById('user-bar').style.display = 'none';
-            const ov = document.getElementById('login-overlay');
-            ov.style.opacity = '1';
-            ov.style.display = 'flex';
-            document.getElementById('login-inp').value = '';
-            document.getElementById('lerr').style.display = 'none';
-            document.getElementById('login-go').disabled = false;
-            document.getElementById('login-go').textContent = 'Enter Studio →';
-            renderHistory([]);
-            setTimeout(() => document.getElementById('login-inp').focus(), 200);
+            // replace(), not assign(): Back must not walk into a page whose
+            // session was just destroyed.
+            window.location.replace('/login');
         }
 
-        // ── Check session ──
-        (async function checkSession() {
-            _applyTheme(_dark, false);
+        // ── Load the signed-in account ──
+        // Reaching this script at all means the server already verified a
+        // session (or restored one from the stay-signed-in cookie), so this
+        // only fills in the name, avatar and history. If the session dies
+        // mid-session, fetchJSON sends the visitor to /login.
+        (async function loadAccount() {
             _loadDemCatalog();
             try {
                 const d = await fetchJSON(`${BASE}/me`);
-                if (d.username) {
-                    onLoginSuccess(d.username, d.runs || [], false);
-                    return;
-                }
+                if (d.username) onLoginSuccess(d.username, d.runs || [], false);
             } catch {}
-            // Flask session gone (restart/deploy/expiry) but the stay-
-            // signed-in cookie may still be valid — try it silently before
-            // showing the login form (no overlay flash either way).
-            try {
-                const r = await fetchJSON(`${BASE}/remember`, { method: 'POST' });
-                if (r.username) {
-                    onLoginSuccess(r.username, r.runs || [], false);
-                    return;
-                }
-            } catch {}
-            document.getElementById('login-overlay').style.display = 'flex';
-            setTimeout(() => document.getElementById('login-inp').focus(), 400);
         })();
 
         // ── History ──
@@ -3250,7 +3049,7 @@
                         minute: '2-digit' }); }
                 const short = (r.run_id || '').slice(0, 8) + '…';
                 const desc = r.description ?
-                    `<div style="font-size:9px;color:var(--mint);font-family:var(--mono);margin-bottom:2px">${r.description}</div>` :
+                    `<div style="font-size:9px;color:var(--accent);font-family:var(--mono);margin-bottom:2px">${r.description}</div>` :
                     '';
                 return `<div class="run-card" style="${i===0?'border-color:rgba(16,185,129,.35);':''}">
               <div class="run-card-top"><span class="run-mod">${ic} ${r.module}</span><span class="run-time">${ts}</span></div>

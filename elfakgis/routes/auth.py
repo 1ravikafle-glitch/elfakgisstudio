@@ -178,18 +178,18 @@ def _sso_fallback_page():
 <style>
   :root {{ color-scheme: light dark; }}
   body {{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-         font-family:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;
-         background:#eff3ec; color:#12211b; padding:24px; }}
-  .card {{ background:#fafbf9; border:1px solid #cbd8cf; border-radius:14px;
+         font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+         background:#fafafa; color:#18181b; padding:24px; }}
+  .card {{ background:#ffffff; border:1px solid #e4e4e7; border-radius:12px;
            padding:32px 28px; max-width:420px; text-align:center;
            box-shadow:0 12px 40px rgba(18,33,27,.12); }}
   h1 {{ font-size:20px; margin:0 0 8px; }}
-  p  {{ font-size:14px; color:#4c6158; line-height:1.6; margin:0 0 20px; }}
-  a.btn {{ display:inline-block; background:#378152; color:#f7faf4; text-decoration:none;
-           padding:11px 22px; border-radius:11px; font-weight:600; font-size:14px; }}
-  a.btn:hover {{ background:#2f6b45; }}
+  p  {{ font-size:14px; color:#3f3f46; line-height:1.6; margin:0 0 20px; }}
+  a.btn {{ display:inline-block; background:#16833e; color:#ffffff; text-decoration:none;
+           padding:11px 22px; border-radius:10px; font-weight:600; font-size:14px; }}
+  a.btn:hover {{ background:#12682f; }}
   .mark {{ width:44px; height:44px; border-radius:12px; margin:0 auto 16px;
-           background:linear-gradient(135deg,#4e9a6b,#378152); color:#fff;
+           background:linear-gradient(135deg,#2fd06e,#16833e); color:#fff;
            display:flex; align-items:center; justify-content:center;
            font-size:20px; font-weight:800; }}
 </style></head>
@@ -198,7 +198,7 @@ def _sso_fallback_page():
   <h1>One more step</h1>
   <p>We couldn't pass your sign-in across automatically.<br>
      Please sign in with the same username and password you use on Forestry PSC Preparation.</p>
-  <a class="btn" href="/">Go to sign in</a>
+  <a class="btn" href="/login">Go to sign in</a>
 </div></body></html>"""
 
 
