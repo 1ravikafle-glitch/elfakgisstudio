@@ -41,6 +41,15 @@ dem_catalog/
 !data/nepal/local_unit.dbf
 !data/nepal/local_unit.prj
 
+# DEM library seed (small Palpa tile so the catalog works on Render;
+# users with other areas upload their own .tif). NOTE: files inside an
+# excluded dir need the dir re-included first — order matters here.
+!dem_catalog/
+!dem_catalog/44N/
+!dem_catalog/44N/PALPA_44N.tif
+!dem_catalog/45N/
+!dem_catalog/45N/.gitkeep
+
 # Auth store contains token hashes — never push
 users.json
 
