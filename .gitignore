@@ -18,6 +18,11 @@ dem_catalog/
 *.dbf
 *.prj
 *.cpg
+# Shapefile sidecars — spatial indexes + XML metadata. Optional caches
+# geopandas/fiona do not need, so they follow the rest of the family out.
+*.sbn
+*.sbx
+*.shp.xml
 *.tif
 *.tiff
 *.zip
