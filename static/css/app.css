@@ -206,7 +206,7 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 .badge.warn { background: rgba(245,165,36,.12); border-color: rgba(245,165,36,.4); }
 .badge.purple { background: rgba(142,142,147,.10); border-color: var(--border-strong); }
 .toggle-row { display: flex; background: var(--hover); border: 1px solid var(--border); border-radius: var(--pill); padding: 4px; gap: 4px; }
-.tog { flex: 1; text-align: center; font-size: 13.5px; font-weight: 700; padding: 10px 14px; border-radius: var(--pill); cursor: pointer; color: var(--muted); transition: all .2s var(--spring); }
+.tog { flex: 1; text-align: center; font-size: 13.5px; font-weight: 700; padding: 10px 14px; border-radius: var(--pill); cursor: pointer; color: var(--muted-on-tint); transition: all .2s var(--spring); }
 .tog.on, .tog.active { background: var(--panel-solid); color: var(--txt); box-shadow: var(--shadow-sm); }
 .taken { border-color: var(--red) !important; }
 .taken-msg, .login-err { color: var(--red); font-size: 13px; font-weight: 600; }
@@ -216,7 +216,7 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 .mtabs { display: flex; gap: 4px; margin-left: auto; background: var(--hover); border: 1px solid var(--border); border-radius: var(--pill); padding: 4px; }
 .mtab {
     min-width: 38px; height: 38px; padding: 0 12px; border-radius: var(--pill); display: flex; align-items: center; justify-content: center;
-    font-family: var(--mono); font-size: 12.5px; font-weight: 700; color: var(--muted); cursor: pointer;
+    font-family: var(--mono); font-size: 12.5px; font-weight: 700; color: var(--muted-on-tint); cursor: pointer;
     transition: all .25s var(--spring); border: none; background: transparent;
 }
 .mtab:hover { color: var(--accent); }
@@ -254,7 +254,7 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 /* ── Preview ── */
 .preview-panel { display: flex; flex-direction: column; }
 .ptabs { display: flex; gap: 4px; background: var(--hover); border: 1px solid var(--border); border-radius: var(--pill); padding: 4px; margin: 12px 14px 0; flex-shrink: 0; }
-.ptab { flex: 1; text-align: center; font-size: 13.5px; font-weight: 700; padding: 10px 12px; border-radius: var(--pill); cursor: pointer; color: var(--muted); transition: all .25s var(--spring); }
+.ptab { flex: 1; text-align: center; font-size: 13.5px; font-weight: 700; padding: 10px 12px; border-radius: var(--pill); cursor: pointer; color: var(--muted-on-tint); transition: all .25s var(--spring); }
 .ptab:hover:not(.on) { color: var(--txt); }
 .ptab.on { background: var(--accent-fill); color: var(--on-accent); box-shadow: var(--shadow-sm); }
 .preview-foot { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; align-items: center; }

@@ -3003,7 +3003,7 @@
             const toast = document.createElement('div');
             toast.textContent = isNew ? `Welcome, ${username}! Account created.` : `Welcome back, ${username}!`;
             toast.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(10px);
-                background:var(--accent-grad);color:white;padding:10px 22px;border-radius:30px;
+                background:var(--accent-fill);color:var(--on-accent);padding:10px 22px;border-radius:30px;
                 font-size:12px;font-weight:600;font-family:var(--sans);z-index:99000;
                 box-shadow:0 4px 20px var(--accent-glow);opacity:0;
                 transition:all .35s var(--spring)`;
