@@ -155,10 +155,16 @@ def sso_exchange():
     log.info("SSO sign-in: %r from %s", username, _get_client_ip())
 
     if request.args.get("json") == "1":
-        return jsonify({"ok": True, "username": username, "runs": runs[-20:]})
+        resp = jsonify({"ok": True, "username": username, "runs": runs[-20:]})
+        # A verified handoff earns the same 30-day stay-signed-in cookie a
+        # password login gets, so later direct visits need no password either.
+        _issue_remember(resp, username)
+        return resp
 
     # 303 so a reload never re-posts the token.
-    return Response("", status=303, headers={"Location": "/"})
+    resp = Response("", status=303, headers={"Location": "/"})
+    _issue_remember(resp, username)
+    return resp
 
 
 def _sso_fallback_page():
