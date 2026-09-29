@@ -604,7 +604,19 @@
         // only uploads + queues (<1s). Polls are tiny GETs, so a dropped
         // connection just retries instead of surfacing "Server error 502".
         async function postJob(url, fd) {
-            const ack = await fetchJSON(url, { method: 'POST', body: fd });
+            // Bound the accept POST: uploads can stall forever if the service
+            // restarts mid-request — abort so the button re-enables instead.
+            const ctrl = new AbortController();
+            const acceptTimer = setTimeout(() => ctrl.abort(), 120000);
+            let ack;
+            try {
+                ack = await fetchJSON(url, { method: 'POST', body: fd, signal: ctrl.signal });
+            } catch (e) {
+                if (e && e.name === 'AbortError') throw new Error('Upload timed out. Check your connection and retry.');
+                throw e;
+            } finally {
+                clearTimeout(acceptTimer);
+            }
             if (!ack || !ack.run_id) throw new Error((ack && ack.error) || 'Server did not accept the job.');
             const runId = ack.run_id;
             startSSE(runId);
