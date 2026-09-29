@@ -257,10 +257,16 @@ def history():
 @auth_bp.route("/auth-capabilities")
 def auth_capabilities():
     """What sign-in methods this deployment offers (used by diagnostics)."""
+    try:
+        from elfakgis.core import db as _db
+        db_status = _db.status()
+    except Exception:
+        db_status = {"available": False, "reason": "error"}
     return jsonify({
         "shared_accounts": True,
         "sso": autshared.sso_enabled(),
-        "shared_database": autshared.db.available(),
+        "shared_database": db_status.get("available", False),
+        "db_reason": db_status.get("reason", "unknown"),
     })
 
 

@@ -112,6 +112,17 @@ def available() -> bool:
     return _connect() is not None
 
 
+def status() -> dict:
+    """Safe-to-expose diagnostics (never includes credentials)."""
+    if not _SA:
+        return {"available": False, "reason": "sqlalchemy_missing"}
+    if not _normalize_database_url(_database_url()):
+        return {"available": False, "reason": "database_url_missing"}
+    if _connect() is not None:
+        return {"available": True, "reason": "ok"}
+    return {"available": False, "reason": "connect_failed"}
+
+
 def _exec(sql: str, params: Optional[dict] = None):
     eng = _connect()
     if eng is None:
