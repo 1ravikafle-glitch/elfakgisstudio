@@ -188,25 +188,30 @@
             if (ni) _addNavRipple(ni, e);
         });
 
-        let _lastPct = 0;
+        // Single-easing % readout: one rAF loop always glides toward the
+        // LATEST target (up or down), so overlapping updates can never fight
+        // or leave the number disagreeing with the bar.
+        let _pctShown = 0, _pctTarget = 0, _pctRaf = null;
 
         function _animatePct(target) {
-            const el = document.getElementById('prog-pct');
-            if (!el) return;
-            const start = _lastPct;
-            const delta = target - start;
-            const dur = Math.min(600, Math.abs(delta) * 8);
-            const t0 = performance.now();
-
-            function step(now) {
-                const p = Math.min(1, (now - t0) / (dur || 1));
-                const cur = Math.round(start + delta * p);
-                el.textContent = cur + '%';
-                if (p < 1) requestAnimationFrame(step);
-                else _lastPct = target;
-            }
-            requestAnimationFrame(step);
+            _pctTarget = Math.max(0, Math.min(100, Math.round(target)));
+            if (_pctRaf) return;
+            const step = () => {
+                _pctRaf = null;
+                if (_pctShown === _pctTarget) return;
+                const diff = _pctTarget - _pctShown;
+                _pctShown += Math.sign(diff) * Math.max(1, Math.round(Math.abs(diff) / 6));
+                if (Math.abs(_pctTarget - _pctShown) <= 1) _pctShown = _pctTarget;
+                const el = document.getElementById('prog-pct');
+                if (el) el.textContent = _pctShown + '%';
+                if (_pctShown !== _pctTarget) _pctRaf = requestAnimationFrame(step);
+            };
+            _pctRaf = requestAnimationFrame(step);
         }
+
+        // True when the server's live % has taken over the bar for the
+        // current run — the time-based guess must stay silent from then on.
+        let _sseLive = false;
 
         let activeModule = 'A',
             cMode = 'A',
@@ -523,12 +528,13 @@
             }
         }
 
-        // ── Time-based progress (fills the SSE blind window) ──
-        // The pipeline POST blocks until the run finishes, so the SSE stream
-        // can only replay buffered events *after* completion (stuck-at-5% then
-        // jump-to-100%). While awaiting the response, ease the bar 5% → 75%
-        // cap using per-module learned durations, then hold until the server
-        // confirms — only then show 100%.
+        // ── Time-based progress (fills the pre-start blind window) ──
+        // Jobs run server-side in background threads: the POST returns 202
+        // instantly, then live server % arrives over SSE. While nothing real
+        // has arrived yet, ease the bar 5% → 75% cap using per-module learned
+        // durations. The moment one real server % lands (_sseLive), the guess
+        // goes silent so the two writers can never fight and the bar/ETA
+        // never jump backwards.
         const ProgAnim = (() => {
             const CAP = 75, MIN = 5;
             const DEFAULTS = {A:25000,B:25000,C:40000,D:45000,E:90000,F:150000,G:60000,H:240000,I:90000};
@@ -543,13 +549,15 @@
             }
             function start(m, startMsg) {
                 stop();
+                _sseLive = false;
                 msg = startMsg || 'Processing…';
                 t0 = Date.now(); est = getEst(m);
                 timer = setInterval(() => {
+                    if (_sseLive) return;
                     const el = Date.now() - t0;
                     const pct = MIN + (CAP - MIN) * (1 - Math.exp(-el / (est * 0.55)));
                     const eta = el < est ? ` · ~${Math.max(1, Math.round((est - el) / 1000))}s left`
-                                         : ' · finishing…';
+                                         : ` · ${Math.round(el / 1000)}s so far…`;
                     setProgress('Processing…', msg + eta, Math.round(Math.min(pct, CAP)), false);
                 }, 500);
             }
@@ -625,6 +633,8 @@
                     const msg = d.msg;
 
                     if (pct !== undefined && pct !== null) {
+                        _sseLive = true;
+                        ProgAnim.stop();
                         const now = Date.now();
                         const elapsed = (now - startTime) / 1000;
 
@@ -646,7 +656,9 @@
 
                     if (pct >= 100) {
                         es.close();
-                        setTimeout(() => { setProgress('Ready', '', 0); }, 8000);
+                        // Only clear an idle bar — never wipe a newer run the
+                        // user may have started meanwhile.
+                        setTimeout(() => { if (currentRunId === runId) setProgress('Ready', '', 0); }, 8000);
                     }
 
                 } catch (err) {
