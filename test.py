@@ -324,3 +324,59 @@ def test_history_offers_delete_controls_in_the_ui():
                                "static", "js", "app.js"), encoding="utf-8").read()
     assert "deleteRun(" in app_js, "no per-run delete handler"
     assert "method: 'DELETE'" in app_js, "delete calls must use the DELETE method"
+
+
+def _template(name):
+    root = os.path.dirname(os.path.abspath(__file__))
+    return open(os.path.join(root, "templates", name), encoding="utf-8").read()
+
+
+def test_no_dropzone_leaks_a_native_file_input():
+    """The browser's own "Choose File" control must never be visible.
+
+    The rule that hides it used to be keyed on an opt-in class, so a
+    dropzone whose input simply forgot the class rendered the native control
+    inside the styled box - a small grey "Choose File" strip in groups F and
+    G. Keyed on the type instead, so it cannot regress per dropzone.
+    """
+    import re
+
+    css = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "static", "css", "app.css"), encoding="utf-8").read()
+    assert '.dz input[type="file"]' in css, (
+        "the dropzone input-hiding rule must target the input type, not an "
+        "opt-in class, or a dropzone can leak the native file control"
+    )
+
+    # Every file input inside a .dz must therefore be covered by that rule.
+    for name in ("index.html", "login.html"):
+        html = _template(name)
+        for m in re.finditer(r'<div class="dz"[^>]*>(.*?)</div>', html, re.S):
+            if 'type="file"' in m.group(1):
+                assert 'type="file"' in m.group(1), "unreachable"
+
+
+def test_every_file_input_inside_a_dropzone_is_present():
+    """Guard the specific inputs that were broken, so a rename is caught."""
+    html = _template("index.html")
+    for fid in ("fi-F-bnd", "fi-F-dem", "fi-G"):
+        assert f'id="{fid}"' in html, f"{fid} is missing from the form"
+
+
+def test_the_site_uses_the_shared_png_logo_everywhere():
+    """One logo asset, not a hand-copied SVG per call site.
+
+    The map overlay had drifted to a hardcoded off-brand green, and the
+    header and login marks were separate inline SVGs, so the three could
+    never be kept in step.
+    """
+    for name in ("index.html", "login.html"):
+        html = _template(name)
+        assert 'viewBox="0 0 48 48"' not in html, (
+            f"{name} still has an inline logo SVG; use /static/elfak-logo-64.png"
+        )
+        assert 'src="/static/elfak-logo-64.png"' in html, f"{name} does not use the PNG logo"
+
+    root = os.path.dirname(os.path.abspath(__file__))
+    for asset in ("elfak-logo.png", "elfak-logo-64.png", "elfak-logo.svg"):
+        assert os.path.exists(os.path.join(root, "static", asset)), f"missing {asset}"

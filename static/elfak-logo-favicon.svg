@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- Favicon variant: same mark, tuned for 16-32px. The trunk and the
+       terrain contours are dropped because at that size they are sub-pixel
+       and just add noise; the chevrons are thickened to keep the tiers
+       separated. -->
+  <defs>
+    <linearGradient id="tile" x1="3" y1="3" x2="45" y2="45" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0EA86F"/>
+      <stop offset="0.55" stop-color="#0A8258"/>
+      <stop offset="1" stop-color="#074A36"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#tile)"/>
+
+  <g stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"
+     stroke-linejoin="round" fill="none">
+    <path d="M16.5 21.5 L24 11.5 L31.5 21.5"/>
+    <path d="M13 31 L24 21 L35 31"/>
+    <path d="M9.5 40.5 L24 30.5 L38.5 40.5"/>
+  </g>
+</svg>

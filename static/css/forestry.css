@@ -541,7 +541,8 @@ body.login-page {
     box-shadow: var(--shadow-sm);
 }
 
-.login-mark svg { width: 36px; height: 36px; display: block; }
+.login-mark svg,
+.login-mark img { width: 36px; height: 36px; display: block; }
 
 .login-title {
     font-family: var(--display);

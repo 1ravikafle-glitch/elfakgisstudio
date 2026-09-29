@@ -98,7 +98,8 @@ button:active, .btn:active, .hdr-btn:active, .mtab:active, .ptab:active,
 }
 .logo { display: flex; align-items: center; gap: 12px; }
 .logo-mark { width: 42px; height: 42px; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); flex-shrink: 0; }
-.logo-mark svg { width: 42px; height: 42px; display: block; }
+.logo-mark svg,
+.logo-mark img { width: 42px; height: 42px; display: block; }
 .logo-text { font-size: 17px; font-weight: 800; letter-spacing: -.022em; line-height: 1.1; }
 .logo-sub { font-size: 10.5px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
 .hdr-pills { display: flex; gap: 8px; margin-left: 8px; }
@@ -194,7 +195,11 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 .dz:hover { border-color: var(--accent); }
 .dz.over { border-color: var(--accent); background: var(--accent-soft); }
 .dz-text { font-size: 14.5px; font-weight: 700; }
-.dz input.fi { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+/* Every file input inside a dropzone is the invisible click target for the
+   whole box, not just the ones that remembered a class. Targeting the type
+   means a dropzone can never leak the browser's native "Choose File"
+   control, which is what happens if this is keyed on an opt-in class. */
+.dz input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .badge { font-size: 13px; line-height: 1.6; padding: 11px 14px; border-radius: var(--r-md); background: var(--accent-soft); border: 1.5px solid var(--accent-line); color: var(--txt2); }
 .badge[style] { font-size: 12.5px !important; line-height: 1.6 !important; }
 .badge.info { background: rgba(10,132,255,.09); border-color: rgba(10,132,255,.3); }

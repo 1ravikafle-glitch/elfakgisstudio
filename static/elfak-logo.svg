@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <linearGradient id="tile" x1="3" y1="3" x2="45" y2="45" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0EA86F"/>
+      <stop offset="0.55" stop-color="#0A8258"/>
+      <stop offset="1" stop-color="#074A36"/>
+    </linearGradient>
+    <linearGradient id="canopy" x1="24" y1="9" x2="24" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E6FBF3"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#tile)"/>
+
+  <!-- Terrain contours: the cartographic cue. Faint enough never to
+       compete with the tree. -->
+  <g stroke="#FFFFFF" stroke-linecap="round" fill="none" opacity="0.26">
+    <path d="M9 40.5 q15 -4.5 30 0" stroke-width="1.5"/>
+    <path d="M12 44 q12 -3.5 24 0" stroke-width="1.4"/>
+  </g>
+
+  <!-- Conifer from three stacked chevrons; the gaps between them read as
+       contour lines, which is what makes this a GIS mark and not a generic
+       tree. Stroked rather than filled so it survives down to 16px. -->
+  <g stroke="url(#canopy)" stroke-width="3.8" stroke-linecap="round"
+     stroke-linejoin="round" fill="none">
+    <path d="M17.5 20.5 L24 11 L30.5 20.5"/>
+    <path d="M14 29 L24 19.5 L34 29"/>
+    <path d="M10.5 37.5 L24 28.5 L37.5 37.5"/>
+    <path d="M24 36.5 L24 42"/>
+  </g>
+</svg>

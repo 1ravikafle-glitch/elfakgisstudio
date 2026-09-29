@@ -29,6 +29,13 @@ dem_catalog/
 *.kmz
 *.png
 
+# The brand logo is shipped as a PNG on purpose: the mark is one asset used
+# by the header, the login page and the map overlay, so it cannot drift the
+# way three hand-copied SVGs did. It has to be tracked or the site deploys
+# without a logo.
+!static/elfak-logo.png
+!static/elfak-logo-64.png
+
 # Thesis Map base bundle — required on Render for GET /thesis_options.
 # Pre-dissolved 7 provinces + 77 districts (small, fast: Render only
 # reprojects to the user's UTM zone). local_unit.shp stays as offline
