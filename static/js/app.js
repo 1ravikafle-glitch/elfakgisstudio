@@ -621,6 +621,7 @@
             const runId = ack.run_id;
             startSSE(runId);
             const t0 = Date.now(), TIMEOUT = 30 * 60 * 1000;
+            let boot0 = null;
             for (;;) {
                 await new Promise(r => setTimeout(r, 2000));
                 let s;
@@ -628,6 +629,13 @@
                 catch (e) {
                     if (Date.now() - t0 > TIMEOUT) throw e;
                     continue;
+                }
+                // Worker restarted mid-job (free-tier OOM/sleep): the
+                // in-memory job is gone — say so now instead of polling
+                // blindly for 30 minutes.
+                if (s && s.boot) {
+                    if (boot0 === null) boot0 = s.boot;
+                    else if (s.boot !== boot0) throw new Error('Server restarted during processing. Please resubmit — your files are still selected.');
                 }
                 if (s && s.done) {
                     if (s.status && s.status !== 200) throw new Error((s.payload && s.payload.error) || `Server error ${s.status}`);

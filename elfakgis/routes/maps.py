@@ -19,20 +19,38 @@ from flask import Blueprint
 maps_bp = Blueprint('maps_bp', __name__)
 @maps_bp.route("/progress/<run_id>")
 def progress_stream(run_id):
+    from elfakgis.core.store import _prog_replay
     try:
         run_id = _safe_runid(run_id)
     except:
         pass
     def gen():
-        sent = 0
+        # Replay persisted events first (survives worker restarts), then
+        # live-tail memory. Dedup by value: replay already merges both.
+        # A replayed 100% ends the stream immediately (nothing live to wait).
+        sent = set()
+        finished = False
+        try:
+            for m in _prog_replay(run_id):
+                sent.add(m)
+                try:
+                    if (json.loads(m) or {}).get("pct", 0) >= 100:
+                        finished = True
+                except Exception:
+                    pass
+                yield f"data: {m}\n\n"
+        except Exception:
+            pass
+        if finished:
+            return
         last_heartbeat = time.time()
         while True:
             msgs = _PROG.get(run_id, [])
-            new = msgs[sent:]
+            new = [m for m in msgs if m not in sent]
             if new:
                 for m in new:
+                    sent.add(m)
                     yield f"data: {m}\n\n"
-                sent += len(new)
                 try:
                     if json.loads(msgs[-1]).get("pct", 0) >= 100:
                         return
@@ -59,20 +77,33 @@ def progress_stream(run_id):
 def job_result(run_id):
     """Poll the final payload of a background pipeline job.
 
-    200 {"done": false} while running; {"done": true, "status": <code>,
-    "payload": {...}} when finished (payload has the exact shape the
-    old blocking POST used to return)."""
-    from elfakgis.core.store import _bg_get
+    200 {"done": false, "boot": <worker>} while running; {"done": true,
+    "status": <code>, "payload": {...}} when finished (memory first, then
+    the on-disk result mirror, so restarted workers still answer)."""
+    from elfakgis.core.store import _bg_get, BOOT_ID
     try:
         run_id = _safe_runid(run_id)
     except Exception:
-        return jsonify({"done": False}), 200
+        return jsonify({"done": False, "boot": BOOT_ID}), 200
     r = _bg_get(run_id)
-    if not r:
-        return jsonify({"done": False}), 200
-    return jsonify({"done": bool(r.get("done")),
-                    "status": r.get("status"),
-                    "payload": r.get("payload")}), 200
+    if r:
+        return jsonify({"done": bool(r.get("done")),
+                        "status": r.get("status"),
+                        "payload": r.get("payload"),
+                        "boot": BOOT_ID}), 200
+    # Disk mirror (job finished before a restart).
+    try:
+        from elfakgis.core.config import OUTPUT
+        p = os.path.join(_safe_path(OUTPUT, run_id), "result.json")
+        if os.path.exists(p):
+            with open(p, encoding="utf-8") as f:
+                disk = json.load(f)
+            return jsonify({"done": True, "status": disk.get("status"),
+                            "payload": disk.get("payload"),
+                            "boot": BOOT_ID}), 200
+    except Exception:
+        pass
+    return jsonify({"done": False, "boot": BOOT_ID}), 200
 
 @maps_bp.route("/geojson/<run_id>")
 def get_geojson(run_id):

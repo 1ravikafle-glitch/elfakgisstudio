@@ -15,6 +15,19 @@ from elfakgis.core.config import USERS_FILE
 _PROG: dict = {}
 _PROG_LOCK = threading.Lock()
 
+# Worker identity: survives nothing, which is the point — if the id behind
+# a pending job changes, the worker restarted and the in-memory job died.
+BOOT_ID = uuid.uuid4().hex[:12]
+
+
+def _prog_path(rid):
+    try:
+        from elfakgis.core.config import OUTPUT
+        return os.path.join(OUTPUT, rid, "progress.log")
+    except Exception:
+        return None
+
+
 def _prog(rid, msg, pct=None):
     o = {
         "msg": str(msg)[:500],
@@ -25,7 +38,39 @@ def _prog(rid, msg, pct=None):
         if rid not in _PROG: _PROG[rid] = []
         _PROG[rid].append(json.dumps(o))
         _PROG[rid] = _PROG[rid][-500:]
+    # Disk mirror: lets a fresh worker replay progress after a restart.
+    try:
+        p = _prog_path(rid)
+        if p:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "a", encoding="utf-8") as f:
+                f.write(json.dumps(o) + "\n")
+    except Exception:
+        pass
     time.sleep(0.01)
+
+
+def _prog_replay(rid, limit=500):
+    """Buffered events for rid: disk first (survives restarts), then memory."""
+    out = []
+    try:
+        p = _prog_path(rid)
+        if p and os.path.exists(p):
+            with open(p, encoding="utf-8") as f:
+                lines = f.read().splitlines()[-limit:]
+            for ln in lines:
+                try:
+                    json.loads(ln)
+                    out.append(ln)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    with _PROG_LOCK:
+        for m in _PROG.get(rid, [])[-limit:]:
+            if m not in out:
+                out.append(m)
+    return out[-limit:]
 
 def _cleanup_old_prog():
     while True:
@@ -60,6 +105,16 @@ def _bg_store(run_id, status, payload):
     with _BG_LOCK:
         _BG_RESULTS[run_id] = {"done": True, "status": int(status),
                                "payload": payload, "ts": time.time()}
+    # Disk mirror so a restarted worker can still serve the result.
+    try:
+        from elfakgis.core.config import OUTPUT
+        d = os.path.join(OUTPUT, run_id)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "result.json"), "w", encoding="utf-8") as f:
+            json.dump({"done": True, "status": int(status), "payload": payload},
+                      f, ensure_ascii=False)
+    except Exception:
+        pass
 
 def _bg_get(run_id):
     with _BG_LOCK:
