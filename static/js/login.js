@@ -1,5 +1,5 @@
 /* ================================================================
-   Elfak GIS Pro Studio — sign-in page
+   Elfak GIS Studio — sign-in page
    The studio itself is behind a real session, so this file's only job is
    to get a valid session and then hand the browser to "/". A hard refresh
    while signed in never reaches this page.

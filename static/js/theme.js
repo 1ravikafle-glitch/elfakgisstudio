@@ -1,5 +1,5 @@
 /* ================================================================
-   Elfak GIS Pro Studio — appearance (shared by /login and the studio)
+   Elfak GIS Studio — appearance (shared by /login and the studio)
    Loaded first on every page so the sign-in page and the app can never
    disagree about light or dark.
 

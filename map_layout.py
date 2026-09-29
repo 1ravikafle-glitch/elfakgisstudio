@@ -1,4 +1,4 @@
-"""A4 cartographic map renderer for ElfakGISProStudio.
+"""A4 cartographic map renderer for Elfak GIS Studio.
 
 Reference-style survey map on A4 portrait:
   - outer neatline enclosing the whole sheet

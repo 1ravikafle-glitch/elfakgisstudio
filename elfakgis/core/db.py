@@ -1,4 +1,4 @@
-"""Shared PostgreSQL access for Elfak GIS Pro Studio.
+"""Shared PostgreSQL access for Elfak GIS Studio.
 
 Elfak GIS runs as its own Render service but shares the Forestry PSC
 PostgreSQL database, so a single Forestry PSC account signs in to both

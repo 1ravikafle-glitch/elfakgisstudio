@@ -1,4 +1,4 @@
-# ElfakGISProStudio — Processing Groups Reference
+# Elfak GIS Studio — Processing Groups Reference
 
 > One-group-at-a-time execution model: every HTTP request dispatches to **exactly
 > one** group module. Only that group's code + the shared GIS base load into the

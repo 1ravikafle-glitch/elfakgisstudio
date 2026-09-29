@@ -1,5 +1,5 @@
         /* ================================================================
-           ELFAK GIS PRO STUDIO — FULL APPLICATION JS
+           ELFAK GIS STUDIO — FULL APPLICATION JS
            (Includes layout editor, export, modules A-H, login, history, etc.)
            ================================================================ */
 
@@ -3128,7 +3128,7 @@
                 titleArea.textContent = 'Map Title';
             }
 
-            console.log('🌲 Elfak GIS Pro Studio — Layout Editor ready');
+            console.log('🌲 Elfak GIS Studio — Layout Editor ready');
         });
 
         // ── North arrow colour picker + legend swatch wiring ────────
@@ -3174,4 +3174,4 @@
                 });
             }
         })();
-        console.log('🌲 Elfak GIS Pro Studio — Professional Layout Editor');
+        console.log('🌲 Elfak GIS Studio — Professional Layout Editor');

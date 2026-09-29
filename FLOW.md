@@ -1,4 +1,4 @@
-# ElfakGISProStudio — Request & Data Flows
+# Elfak GIS Studio — Request & Data Flows
 
 ## 1. Application Load & Login
 

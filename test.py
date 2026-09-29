@@ -1,4 +1,4 @@
-"""Smoke tests for ElfakGISProStudio — run with: python -m pytest test.py -v"""
+"""Smoke tests for Elfak GIS Studio — run with: python -m pytest test.py -v"""
 import os
 import sys
 

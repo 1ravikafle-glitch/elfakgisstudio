@@ -1,4 +1,4 @@
-# ElfakGISProStudio — Architecture
+# Elfak GIS Studio — Architecture
 
 > Current state (2026-09): backend is the `elfakgis` package (Flask blueprints
 > per concern + one module per processing group; heavy GIS imports load per
@@ -28,7 +28,7 @@
 ## Directory Structure
 
 ```
-ElfakGISProStudio/
+Elfak GIS Studio/
 │
 ├── app.py                  # Thin shim — `from elfakgis import app` (keeps
 │                           # `gunicorn app:app` + `from app import app` working)

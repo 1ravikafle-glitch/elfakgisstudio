@@ -1,4 +1,4 @@
-"""ElfakGISProStudio — Flask app factory (light boot; GIS lazy) (split from app.py — bodies verbatim; see ARCHITECTURE.md)."""
+"""Elfak GIS Studio — Flask app factory (light boot; GIS lazy) (split from app.py — bodies verbatim; see ARCHITECTURE.md)."""
 import os, re, io, gc, json, time, math, uuid, zipfile, shutil, traceback, tempfile
 import threading, hashlib, html, secrets, logging, urllib.parse
 from collections import defaultdict, OrderedDict

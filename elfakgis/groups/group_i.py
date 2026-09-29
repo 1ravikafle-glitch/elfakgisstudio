@@ -1,4 +1,4 @@
-"""ElfakGISProStudio — Group I Thesis Locator Map.
+"""Elfak GIS Studio — Group I Thesis Locator Map.
 
 4-panel A4-landscape figure from one bundled base file + one study upload:
 

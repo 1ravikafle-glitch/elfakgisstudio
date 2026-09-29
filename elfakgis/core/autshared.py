@@ -1,4 +1,4 @@
-"""Shared-account authentication for Elfak GIS Pro Studio.
+"""Shared-account authentication for Elfak GIS Studio.
 
 The studio accepts exactly the accounts that Forestry PSC Preparation
 accepts. There is no separate GIS account system: one username, one
@@ -42,7 +42,7 @@ FORESTRY_AUTH_URL = (
     or "https://forestry-pscpreparation.onrender.com/auth/login"
 ).strip()
 
-SSO_AUDIENCE = "elfakgisprostudio"
+SSO_AUDIENCE = "elfakgisstudio"
 
 
 # ── Password verification ─────────────────────────────────────────

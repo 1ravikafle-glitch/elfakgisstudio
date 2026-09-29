@@ -1,4 +1,4 @@
-"""ElfakGISProStudio — pages & SEO routes (split from app.py — bodies verbatim; see ARCHITECTURE.md)."""
+"""Elfak GIS Studio — pages & SEO routes (split from app.py — bodies verbatim; see ARCHITECTURE.md)."""
 import os, re, io, gc, json, time, math, uuid, zipfile, shutil, traceback, tempfile
 import threading, hashlib, html, secrets, logging, urllib.parse
 from collections import defaultdict, OrderedDict
@@ -103,11 +103,11 @@ def about_page():
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Elfak GIS Pro Studio — Professional Forest GIS Application</title>
-<meta name="description" content="Elfak GIS Pro Studio (elfakgis, elfakgispro, elfakgisstudio, elfakgisprostudio) is a professional web-based GIS application for forest boundary mapping, slope analysis, compartment subdivision, survey point generation and multi-forest analysis. Built for Nepal forestry professionals.">
-<meta name="keywords" content="elfakgis, elfakgispro, elfakgisstudio, elfakgisprostudio, elfak gis, elfak gis pro, forest gis nepal, forest boundary mapping, slope analysis nepal, compartment mapping, survey points gis, forestry nepal gis, GIS tool nepal">
+<title>Elfak GIS Studio — Professional Forest GIS Application</title>
+<meta name="description" content="Elfak GIS Studio (elfakgis, elfakgis, elfakgisstudio, elfakgisstudio) is a professional web-based GIS application for forest boundary mapping, slope analysis, compartment subdivision, survey point generation and multi-forest analysis. Built for Nepal forestry professionals.">
+<meta name="keywords" content="elfakgis, elfakgisstudio, elfak gis, forest gis nepal, forest boundary mapping, slope analysis nepal, compartment mapping, survey points gis, forestry nepal gis, GIS tool nepal">
 <meta name="robots" content="index, follow">
-<meta property="og:title" content="Elfak GIS Pro Studio — Forest GIS Application">
+<meta property="og:title" content="Elfak GIS Studio — Forest GIS Application">
 <meta property="og:description" content="Professional web GIS for Nepal forestry: boundary mapping, slope analysis, compartment subdivision, survey points. Free to use at elfakgisstudio.onrender.com">
 <meta property="og:url" content="https://elfakgisstudio.onrender.com/">
 <meta property="og:type" content="website">
@@ -130,8 +130,8 @@ def about_page():
 </style>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication",
- "name":"Elfak GIS Pro Studio",
- "alternateName":["elfakgis","elfakgispro","elfakgisstudio","elfakgisprostudio"],
+ "name":"Elfak GIS Studio",
+ "alternateName":["elfakgis","elfakgisstudio"],
  "url":"https://elfakgisstudio.onrender.com/",
  "description":"Professional web-based GIS application for forest boundary mapping, slope analysis, compartment subdivision and survey point generation for Nepal forestry professionals.",
  "applicationCategory":"GIS Software",
@@ -141,19 +141,17 @@ def about_page():
 </script>
 </head>
 <body>
-<h1>🌲 Elfak GIS Pro Studio</h1>
+<h1>🌲 Elfak GIS Studio</h1>
 <p><strong>Professional Forest GIS Application</strong> for boundary mapping, slope analysis, compartment subdivision, and survey point generation.</p>
 <p>
   <span class="badge">elfakgis</span>
-  <span class="badge">elfakgispro</span>
   <span class="badge">elfakgisstudio</span>
-  <span class="badge">elfakgisprostudio</span>
   <span class="badge">Forest GIS Nepal</span>
 </p>
 <a href="/" class="cta">🚀 Open Application</a>
 
-<h2>What is Elfak GIS Pro Studio?</h2>
-<p>Elfak GIS Pro Studio is a free, web-based Geographic Information System designed for forestry professionals in Nepal and the broader Himalayan region. It provides a complete workflow from raw survey data to professional-quality GIS outputs — all without requiring QGIS, ArcGIS, or any desktop installation.</p>
+<h2>What is Elfak GIS Studio?</h2>
+<p>Elfak GIS Studio is a free, web-based Geographic Information System designed for forestry professionals in Nepal and the broader Himalayan region. It provides a complete workflow from raw survey data to professional-quality GIS outputs — all without requiring QGIS, ArcGIS, or any desktop installation.</p>
 
 <h2>Features</h2>
 <div class="feature"><strong>A — Boundary Whole</strong>: Generate forest boundary polygon from GPS survey points (Excel/CSV). Produces shapefile, line, and point layers with area calculation.</div>
@@ -175,15 +173,15 @@ def about_page():
 <li>Supports 100+ simultaneous users with per-user data isolation</li>
 </ul>
 
-<h2>Who Uses Elfak GIS Pro Studio?</h2>
+<h2>Who Uses Elfak GIS Studio?</h2>
 <p>Forest rangers, community forestry groups, district forest offices, forest inventory teams, and GIS professionals in Nepal, Bhutan, and similar forested regions who need professional GIS output without expensive desktop software.</p>
 
 <h2>Open the Application</h2>
-<p><a href="/" class="cta">🌲 Launch Elfak GIS Pro Studio</a></p>
+<p><a href="/" class="cta">🌲 Launch Elfak GIS Studio</a></p>
 
 <footer>
-  <p>Elfak GIS Pro Studio · <a href="https://elfakgisstudio.onrender.com/">elfakgisstudio.onrender.com</a></p>
-  <p>Keywords: elfakgis · elfakgispro · elfakgisstudio · elfakgisprostudio · forest gis nepal · slope analysis · compartment mapping · survey points · forestry gis</p>
+  <p>Elfak GIS Studio · <a href="https://elfakgisstudio.onrender.com/">elfakgisstudio.onrender.com</a></p>
+  <p>Keywords: elfakgis · elfakgisstudio · forest gis nepal · slope analysis · compartment mapping · survey points · forestry gis</p>
 </footer>
 </body>
 </html>""", mimetype="text/html")

@@ -1,4 +1,4 @@
-"""ElfakGISProStudio — shared constants & paths (split from app.py — bodies verbatim; see ARCHITECTURE.md)."""
+"""Elfak GIS Studio — shared constants & paths (split from app.py — bodies verbatim; see ARCHITECTURE.md)."""
 import os, re, io, gc, json, time, math, uuid, zipfile, shutil, traceback, tempfile
 import threading, hashlib, html, secrets, logging, urllib.parse
 from collections import defaultdict, OrderedDict
@@ -34,7 +34,10 @@ _dem = os.environ.get("DEM_CATALOG_DIR", "dem_catalog")
 DEM_CATALOG_DIR = _dem if os.path.isabs(_dem) else os.path.join(_PROJECT_ROOT, _dem)
 GITHUB_DEM_BASE = os.environ.get(
     "GITHUB_DEM_BASE",
-    "https://raw.githubusercontent.com/1ravikafle-glitch/ElfakGISProStudio/main/dem_catalog"
+    # The DEM catalog lives in this repo. It used to point at a sibling
+    # "ElfakGISProStudio" that no longer resolves (404), which failed
+    # /thesis_options with a 500. Both env vars still override this.
+    "https://raw.githubusercontent.com/1ravikafle-glitch/elfakgisstudio/main/dem_catalog"
 )
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
 DEM_CACHE_DIR = os.path.join(UPLOAD, "dem_cache")

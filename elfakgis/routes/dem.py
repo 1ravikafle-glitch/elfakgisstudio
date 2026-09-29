@@ -1,4 +1,4 @@
-"""ElfakGISProStudio — DEM catalog routes (split from app.py — bodies verbatim; see ARCHITECTURE.md)."""
+"""Elfak GIS Studio — DEM catalog routes (split from app.py — bodies verbatim; see ARCHITECTURE.md)."""
 import os, re, io, gc, json, time, math, uuid, zipfile, shutil, traceback, tempfile
 import threading, hashlib, html, secrets, logging, urllib.parse
 from collections import defaultdict, OrderedDict
@@ -37,7 +37,7 @@ def dem_catalog():
     github_api_urls = []
     for zone in ("44N", "45N"):
         api_base = os.environ.get("GITHUB_API_DEM",
-            "https://api.github.com/repos/1ravikafle-glitch/ElfakGISProStudio/contents/dem_catalog")
+            "https://api.github.com/repos/1ravikafle-glitch/elfakgisstudio/contents/dem_catalog")
         github_api_urls.append((zone, f"{api_base}/{zone}"))
     files = []
     for zone, api_url in github_api_urls:
@@ -104,7 +104,7 @@ def dem_fetch():
     if url:
         candidates.append(url)
     if path:
-        owner_repo = "1ravikafle-glitch/ElfakGISProStudio"
+        owner_repo = "1ravikafle-glitch/elfakgisstudio"
         enc_path = "/".join(urllib.parse.quote(seg) for seg in path.split("/"))
         for branch in ("main", "master"):
             candidates.append(
