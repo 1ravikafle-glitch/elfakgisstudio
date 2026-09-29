@@ -26,7 +26,12 @@
          jszip ~0.1MB) load on demand, one file at a time (each well under
          2MB), via ensureVendor() in app.js: instantly on first use, or
          quietly in the background right after login. -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,600&display=swap" rel="stylesheet" />
+    <!-- Fonts: only actually-used faces (Inter 400/600/700/800, Fraunces 600;
+         JetBrains Mono was downloaded but never referenced — dropped).
+         Non-blocking (media=print swap) + display=swap so text paints
+         instantly in system fonts, then upgrades. -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" /></noscript>
     <link rel="preconnect" href="https://unpkg.com" crossorigin />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
