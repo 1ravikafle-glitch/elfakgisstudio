@@ -28,10 +28,11 @@ minutes, and only accepted by this site.
 
 Both sites must share one secret. Set it on **both**:
 
-| Variable      | Where             | Notes                                              |
-|---------------|-------------------|----------------------------------------------------|
-| `SSO_SECRET`  | environment       | 32+ random characters. Must be identical on both.   |
-| `DATABASE_URL`| environment       | Neon Postgres, shared, so accounts and history match |
+| Variable        | Where       | Notes                                                        |
+|-----------------|-------------|--------------------------------------------------------------|
+| `SSO_SECRET`    | environment | 32+ random characters. Must be identical on both.            |
+| `DATABASE_URL`  | environment | Neon Postgres, shared, so accounts and history match         |
+| `SSO_MAX_TTL`   | environment | Optional. Rejects tokens claiming a longer life than this. `0` (default) = no cap. See [Token lifetime](#token-lifetime). |
 
 Generate a secret with:
 
@@ -43,6 +44,11 @@ If `SSO_SECRET` is unset the feature disables itself: `/sso/exchange`
 sends the visitor to the normal login form and nothing breaks. A bad,
 expired or forged token does the same — it is never an error page.
 
+If the visitor is **already signed in**, a failed handoff does not show
+that page at all: it redirects straight to `/`. Telling someone who is
+already authenticated to "sign in with your username and password" and
+then bouncing them back to the app reads as a broken product.
+
 ## Token format
 
 `base64url(payload).base64url(hmac_sha256(secret, payload))`, no padding.
@@ -53,11 +59,53 @@ expired or forged token does the same — it is never an error page.
 
 - `u` — the username, required
 - `aud` — must be `elfakgisstudio`, so a token minted for another site
-  is rejected
+  is rejected. The pre-rename product name `elfakgisprostudio` is also
+  accepted (see [Audience](#audience)); any other value is refused
 - `exp` — Unix seconds, required to be in the future
 
 The signature covers the encoded payload, so any edit to it invalidates
 the token.
+
+### Audience
+
+Tokens minted before the product was renamed carry the old name
+(`elfakgisprostudio`) in their `aud` claim. Those are signed with the same
+shared secret and still assert "this user is signed in on the sibling site",
+so they are accepted — otherwise every link already in circulation breaks at
+once. `SSO_AUDIENCE_ALIASES` in `elfakgis/core/autshared.py` lists them.
+
+New tokens should use the canonical `elfakgisstudio`. A token for any other
+audience is still refused, so widening this has not turned the check into
+accept-anything.
+
+### Token lifetime
+
+**A handoff token is a bearer credential carried in a URL.** Anyone who ever
+sees that URL — browser history, a shared screenshot, a proxy or web-server
+log, a `Referer` header, a chat message — can replay it until it expires,
+from anywhere, without the password.
+
+That makes a short `ttl` the whole point of the feature. The recommended
+value is a few minutes; `180` is used throughout this document.
+
+Do not mint long-lived handoff tokens. A 30-day handoff link is a 30-day
+password bypass, for every copy of that link, forever until it is rotated.
+
+To enforce this on this side, set `SSO_MAX_TTL` to the longest lifetime you
+are willing to accept, in seconds:
+
+```bash
+SSO_MAX_TTL=600   # refuse any token claiming to live longer than 10 minutes
+```
+
+It defaults to `0` (no cap) for compatibility, because some siblings mint
+long tokens. When it does reject a token it logs the lifetime that was
+refused, so an unexpected rejection is visible in the logs rather than
+silent:
+
+```
+SSO token rejected: lifetime 2592000s exceeds SSO_MAX_TTL 600s
+```
 
 ### Minting (Python — sibling site)
 
@@ -76,7 +124,8 @@ def sso_handoff_url(username: str, base: str, ttl: int = 180) -> str:
 ```
 
 Use a short `ttl` — a couple of minutes is plenty for a page navigation,
-and it keeps a leaked link from being useful for long.
+and it keeps a leaked link from being useful for long. See
+[Token lifetime](#token-lifetime) for why this matters more than it looks.
 
 ### Minting (JavaScript — sibling site)
 

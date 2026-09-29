@@ -2,6 +2,8 @@
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import app
@@ -42,7 +44,108 @@ def test_signed_in_visitor_is_bounced_off_the_login_page():
     assert resp.headers.get("Location", "").endswith("/")
 
 
+@pytest.fixture
+def sso_secret(monkeypatch):
+    """Stand in for the SSO_SECRET that is configured in the real deployment.
+
+    The feature disables itself when the variable is absent, so the local
+    suite has to supply one to exercise the handoff at all.
+    """
+    monkeypatch.setenv("SSO_SECRET", "test-shared-secret-value-0123456789")
+    monkeypatch.setenv("SSO_MAX_TTL", "0")
+    return "test-shared-secret-value-0123456789"
+
+
+def _sso_token(audience, username="Elfak", exp=None, iat=None, secret=None):
+    """Mint a handoff token exactly the way the sibling site does."""
+    import base64, hashlib, hmac, json, time
+    from elfakgis.core import autshared
+
+    secret = secret if secret is not None else autshared._sso_secret()
+    now = int(time.time())
+    payload = {
+        "a": 1,
+        "aud": audience,
+        "exp": exp if exp is not None else now + 180,
+        "iat": iat if iat is not None else now,
+        "u": username,
+    }
+    body = base64.urlsafe_b64encode(
+        json.dumps(payload, separators=(",", ":")).encode()
+    ).decode().rstrip("=")
+    sig = base64.urlsafe_b64encode(
+        hmac.new(secret, body.encode(), hashlib.sha256).digest()
+    ).decode().rstrip("=")
+    return f"{body}.{sig}"
+
+
+def test_sso_accepts_a_token_minted_with_the_pre_rename_audience(sso_secret):
+    """Links minted before the rename carry the old product name.
+
+    They are signed with the same shared secret and still mean "this user is
+    signed in on the sibling site", so they must be accepted. Rejecting them
+    strands every already-circulated link.
+    """
+    from elfakgis.core import autshared
+
+    assert "elfakgisprostudio" in autshared.SSO_AUDIENCE_ALIASES
+
+    token = _sso_token("elfakgisprostudio")
+    client = app.test_client()
+    resp = client.get(f"/sso/exchange?t={token}")
+    assert resp.status_code == 303, f"legacy audience should still sign in: {resp.status_code}"
+    assert resp.headers.get("Location", "").endswith("/")
+
+    with client.session_transaction() as sess:
+        assert sess.get("username") == "Elfak", "legacy-audience handoff did not sign the user in"
+
+
+def test_sso_accepts_the_canonical_audience(sso_secret):
+    from elfakgis.core import autshared
+
+    token = _sso_token(autshared.SSO_AUDIENCE, username="Elfak")
+    resp = app.test_client().get(f"/sso/exchange?t={token}")
+    assert resp.status_code == 303, f"canonical audience should sign in: {resp.status_code}"
+
+
+def test_sso_still_refuses_a_foreign_audience(sso_secret):
+    """Widening the accepted audiences must not turn into accept-anything."""
+    token = _sso_token("some-other-product")
+    resp = app.test_client().get(f"/sso/exchange?t={token}")
+    assert resp.status_code == 401, f"a foreign audience must not sign anyone in: {resp.status_code}"
+
+
+def test_sso_still_refuses_a_token_signed_with_the_wrong_secret(sso_secret):
+    token = _sso_token("elfakgisstudio", secret=b"not-the-shared-secret")
+    resp = app.test_client().get(f"/sso/exchange?t={token}")
+    assert resp.status_code == 401, f"a bad signature must not sign anyone in: {resp.status_code}"
+
+
+def test_failed_sso_handoff_sends_an_already_signed_in_visitor_straight_to_the_app(sso_secret):
+    """A bad link must not tell a signed-in visitor to sign in again.
+
+    That message plus /login's own redirect to / made a dead-end loop: the
+    visitor is already authenticated, so the 'sign in' detour only bounces
+    them back to the studio looking like it is broken.
+    """
+    client = app.test_client()
+    with client.session_transaction() as sess:
+        sess["username"] = "tester"
+    resp = client.get("/sso/exchange?t=not-a-valid-token")
+    assert resp.status_code == 303, f"should redirect instead of showing the fallback: {resp.status_code}"
+    assert resp.headers.get("Location", "").endswith("/")
+    assert b"couldn" not in resp.data, "must not show the 'sign in again' page while signed in"
+
+
+def test_failed_sso_handoff_still_shows_the_fallback_to_a_signed_out_visitor():
+    client = app.test_client()
+    resp = client.get("/sso/exchange?t=not-a-valid-token")
+    assert resp.status_code == 401, f"a signed-out visitor needs the fallback page: {resp.status_code}"
+    assert b"/login" in resp.data, "the fallback page must offer a way to sign in"
+
+
 def test_health_routes():
+
     client = app.test_client()
     for path, ok_codes in [
         ("/robots.txt", {200}),

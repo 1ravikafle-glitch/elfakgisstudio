@@ -44,6 +44,23 @@ FORESTRY_AUTH_URL = (
 
 SSO_AUDIENCE = "elfakgisstudio"
 
+# Handoff links minted before the product was renamed carry the old name in
+# their audience claim. They are still signed by the same shared secret and
+# still mean "this user is signed in on the sibling site", so they are
+# accepted rather than failing closed — otherwise every link already in
+# circulation, and any sibling site that has not been updated yet, breaks
+# at once. New tokens should use SSO_AUDIENCE.
+SSO_AUDIENCE_ALIASES = frozenset({
+    "elfakgisprostudio",
+})
+
+# Optional ceiling on how long a handoff token may claim to be valid.
+# 0 (the default) means no cap, for compatibility with siblings that mint
+# long-lived tokens. See docs/SINGLE-SIGN-ON.md: a token in a URL is a
+# bearer credential that anyone with the link can replay, so the
+# recommended value is a few minutes.
+SSO_MAX_TTL = int(os.environ.get("SSO_MAX_TTL", "0") or 0)
+
 
 # ── Password verification ─────────────────────────────────────────
 
@@ -202,12 +219,21 @@ def verify_sso_token(token: str) -> Optional[dict]:
         return None
     if not isinstance(payload, dict):
         return None
-    if payload.get("aud") != SSO_AUDIENCE:
+    audience = payload.get("aud")
+    if audience != SSO_AUDIENCE and audience not in SSO_AUDIENCE_ALIASES:
         return None
     if not payload.get("u"):
         return None
     try:
-        if int(payload.get("exp", 0)) < int(time.time()):
+        exp = int(payload.get("exp", 0))
+        if exp < int(time.time()):
+            return None
+        # When a ceiling is configured, a token that claims to live far
+        # longer than a sign-in handoff should is refused outright.
+        iat = int(payload.get("iat", 0) or 0)
+        if SSO_MAX_TTL and iat and (exp - iat) > SSO_MAX_TTL:
+            log.warning("SSO token rejected: lifetime %ds exceeds SSO_MAX_TTL %ds",
+                        exp - iat, SSO_MAX_TTL)
             return None
     except Exception:
         return None

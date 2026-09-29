@@ -121,6 +121,27 @@ def login():
     return resp
 
 
+def _already_signed_in():
+    """True when this visitor already holds a usable session or remember cookie.
+
+    Used only to pick the right page after a *failed* handoff. Without it a
+    visitor who is already signed in is told to "sign in with your username
+    and password", clicks through, and is bounced straight back to the app by
+    /login — a dead-end loop that looks like the studio is broken.
+    """
+    if _require_login():
+        return True
+    raw = (request.cookies.get(REMEMBER_COOKIE) or "").strip()
+    if not raw:
+        return False
+    try:
+        from elfakgis.core import db as _db
+        return bool(_db.remember_who(raw))
+    except Exception as e:
+        log.warning("remember-me lookup failed (%s)", e)
+        return False
+
+
 @auth_bp.route("/sso/exchange", methods=["GET", "POST"])
 def sso_exchange():
     """
@@ -148,6 +169,10 @@ def sso_exchange():
                 "error": "Single sign-on is unavailable or the link has expired.",
                 "login_url": "/",
             }), 401
+        # Already signed in? The handoff is irrelevant — go straight to the
+        # app instead of telling them to sign in again.
+        if not request.args.get("json") and _already_signed_in():
+            return Response("", status=303, headers={"Location": "/"})
         return Response(_sso_fallback_page(), status=401, mimetype="text/html")
 
     username = payload["u"]
