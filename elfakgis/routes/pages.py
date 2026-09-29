@@ -8,6 +8,7 @@ from flask import (Flask, request, jsonify, send_file, send_from_directory,
                    render_template, session, Response, stream_with_context, abort, g,
                    redirect)
 from elfakgis.core.config import *
+from elfakgis.core.config import _PROJECT_ROOT
 from elfakgis.core.store import (_prog, _PROG, _PROG_LOCK, _save_run_meta, _append_run,
     _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user)
 from elfakgis.core.security import _rate_limit, _cool_down, _safe_filename, _safe_path, _validate_username, _get_client_ip
@@ -213,6 +214,24 @@ def sitemap_xml():
   <url><loc>https://elfakgisstudio.onrender.com/about</loc>
        <priority>0.9</priority><changefreq>monthly</changefreq></url>
 </urlset>""", mimetype="application/xml")
+
+
+@pages_bp.route("/sw.js")
+def service_worker():
+    """Serve the service worker from the origin root.
+
+    A worker served from /static/ would only get scope "/static/" and
+    could never intercept the page or the API calls, which is the whole
+    point of it. Service-Worker-Allowed is set so the root path is
+    accepted even if the file ever moves.
+    """
+    resp = send_from_directory(
+        os.path.join(_PROJECT_ROOT, "static"), "sw.js", mimetype="application/javascript"
+    )
+    resp.headers["Service-Worker-Allowed"] = "/"
+    # Revalidated every time so a deploy ships a new worker promptly.
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
 
 
 def __getattr__(name):

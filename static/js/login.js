@@ -134,6 +134,10 @@ async function doLogin() {
     btn.innerHTML = _SPIN;
     if (hint) { hint.textContent = 'Connecting to server…'; hint.style.color = 'var(--muted)'; }
 
+    // The background warm-up must not sit in front of the one request the
+    // user is actually waiting on.
+    if (window.__elfakPrefetch) window.__elfakPrefetch.cancelled = true;
+
     try {
         const data = await fetchJSON(`${BASE}/login`, {
             method: 'POST',
@@ -183,4 +187,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const inp = document.getElementById('login-inp');
     const pw = document.getElementById('login-pw');
     if (inp && pw && inp.value) pw.focus();
+
+    _startPreparing();
 });
+
+/* ── Prepare the studio while the visitor is still typing ────────
+   Sign-in is the one moment we know the browser is about to want the
+   whole app. Warming here turns the post-login load into a cache hit
+   instead of a 200 KB download. Everything is best-effort: if it
+   fails, the studio still loads normally on the next page. */
+function _startPreparing() {
+    const P = window.__elfakPrefetch;
+    const note = document.getElementById('prep');
+    if (!P) return;
+
+    // Nothing to do if a previous visit already warmed the shell.
+    if (P.isWarm(P.critical)) {
+        if (note) { note.textContent = 'Studio ready — sign in to continue'; note.hidden = false; }
+        // Libraries may still be missing; top them up quietly.
+        P.warm(P.assets).catch(() => {});
+        return;
+    }
+
+    let quiet = 0;
+    P.onProgress((e) => {
+        if (!note) return;
+        if (e.done) { quiet++; return; }
+        if (e.pct && e.pct > 0) note.textContent = `Preparing studio… ${e.pct}%`;
+    });
+
+    P.warm(P.assets)
+        .then(() => {
+            if (!note) return;
+            note.textContent = 'Studio ready — sign in to continue';
+            note.hidden = false;
+        })
+        .catch(() => { /* best effort only */ });
+}

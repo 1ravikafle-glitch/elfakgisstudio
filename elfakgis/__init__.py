@@ -9,6 +9,81 @@ log = logging.getLogger("elfakgis")
 from flask import Flask, request, jsonify
 from werkzeug.exceptions import HTTPException
 
+# ── Response compression ───────────────────────────────────────────
+# app.js alone is ~160 KB and the two stylesheets ~50 KB, all plain text.
+# Gunicorn does not compress, so without this every cold visit pulls ~210 KB
+# of text that would fit in ~40 KB gzipped. Only text-ish types are touched;
+# images, TIFs and already-encoded bodies pass straight through.
+_COMPRESSIBLE = (
+    "text/", "application/javascript", "application/json",
+    "application/xml", "application/manifest+json", "image/svg+xml",
+)
+_GZIP_MIN_BYTES = 1024
+# The progress stream is server-sent: buffering it would stall live updates,
+# so it is never compressed.
+_NEVER_COMPRESS = ("/progress", "/download/", "/outputs/", "/dem/")
+
+
+def _maybe_gzip(resp):
+    """Gzip a text response when the client asked for it. Never raises.
+
+    Order matters: the cheap header checks run before anything reads the
+    body, so a 200 MB TIF is rejected on its content type alone and never
+    pulled into memory.
+    """
+    try:
+        if resp.status_code >= 300:
+            return resp
+        # A streamed response is either a raw file wrapper (Flask serves
+        # /static/* that way, and it is safe to buffer) or a live generator
+        # such as the progress SSE stream, which must never be buffered.
+        if resp.is_streamed and not resp.direct_passthrough:
+            return resp
+        if resp.headers.get("Content-Encoding"):
+            return resp
+        if request.method == "HEAD" or request.path.startswith(_NEVER_COMPRESS):
+            return resp
+
+        ctype = (resp.mimetype or "").lower()
+        if not any(ctype.startswith(t) or ctype == t for t in _COMPRESSIBLE):
+            return resp
+
+        if "gzip" not in (request.headers.get("Accept-Encoding") or ""):
+            resp.headers.add("Vary", "Accept-Encoding")
+            return resp
+
+        # Flask streams /static/* through a file wrapper, which cannot be
+        # read while direct_passthrough is on. Flipping it off lets get_data()
+        # buffer the file, which is what compression needs anyway.
+        was_passthrough = resp.direct_passthrough
+        resp.direct_passthrough = False
+        data = resp.get_data()
+        if was_passthrough:
+            resp.direct_passthrough = True
+        if len(data) < _GZIP_MIN_BYTES:
+            return resp
+
+        # These bodies are already fully buffered, so a one-shot compress
+        # beats streaming a compressor through the response.
+        import gzip as _gzip
+        packed = _gzip.compress(data, compresslevel=6, mtime=0)
+        if len(packed) >= len(data):
+            return resp          # already dense; compression would cost bytes
+
+        resp.set_data(packed)
+        resp.headers["Content-Encoding"] = "gzip"
+        resp.headers["Content-Length"] = str(len(packed))
+        resp.headers.add("Vary", "Accept-Encoding")
+        # The body is now a different representation, so it needs a different
+        # validator. Without this a cache could hand the gzipped body to a
+        # client that never asked for it.
+        etag = resp.headers.get("ETag")
+        if etag and not etag.endswith('-gzip"'):
+            resp.headers["ETag"] = etag[:-1] + '-gzip"'
+    except Exception as e:       # never let compression break a response
+        log.warning("gzip skipped: %s", e)
+    return resp
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
 
@@ -105,22 +180,31 @@ def create_app():
         resp.headers["X-XSS-Protection"]         = "1; mode=block"
         resp.headers["Referrer-Policy"]          = "strict-origin-when-cross-origin"
         resp.headers["Permissions-Policy"]       = "geolocation=(), camera=(), microphone=()"
-        if os.environ.get("HTTPS") == "1":
+        if os.environ.get("HTTPS", "0") == "1":
             resp.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         allowed = os.environ.get("ALLOWED_ORIGINS", "*")
         resp.headers["Access-Control-Allow-Origin"]       = allowed
         resp.headers["Access-Control-Allow-Headers"]      = "Content-Type,Authorization,X-Requested-With"
-        resp.headers["Access-Control-Allow-Methods"]      = "GET,POST,OPTIONS"
+        resp.headers["Access-Control-Allow-Methods"]      = "GET,POST,OPTIONS,DELETE"
         resp.headers["Access-Control-Allow-Credentials"]  = "true"
         if request.path.startswith(("/login", "/me", "/history", "/progress")):
             resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
             resp.headers["Pragma"]        = "no-cache"
         # Version-pinned static (?v=) is immutable: repeat visits + the
-        # post-login warmup serve it from browser cache, no re-download.
+        # background prefetch serve it from browser cache, no re-download.
         if request.path.startswith("/static/") and request.args.get("v"):
             resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        # Same-origin bootstrap files are revalidated so a deploy is picked
+        # up, but a 304 costs almost nothing.
+        elif request.path == "/sw.js":
+            resp.headers["Cache-Control"] = "no-cache"
+        # Read-only reference data (dropdowns, DEM catalogue) is identical
+        # for every signed-in user, so it may sit in a shared cache for a
+        # few minutes. Never applied to anything user-specific.
+        elif request.path in ("/thesis_options", "/dem_catalog"):
+            resp.headers["Cache-Control"] = "private, max-age=300"
         resp.headers["X-Accel-Buffering"] = "no"
-        return resp
+        return _maybe_gzip(resp)
 
     from elfakgis.core.store import _cleanup_old_prog
     from elfakgis.core.security import _cleanup_old_outputs, _clean_rl

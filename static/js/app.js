@@ -66,13 +66,18 @@
             return _vendorP[name];
         }
 
-        // Background warmup after login: fetch one small file at a time
-        // (each < 2MB) so later actions feel instant and nothing ever
-        // blocks the UI. Runs once per page load.
+        // Background warmup after login: the sign-in page has normally
+        // finished this already, so what is left here is the remainder.
+        // Everything runs one file at a time and yields to the browser, so
+        // later actions feel instant and nothing ever blocks the UI.
         let _warmed = false;
         function _setEngineTxt(t) {
             const el = document.getElementById('engine-pill-txt');
             if (el) el.textContent = t;
+            // The dot pulses only while something is actually loading, so
+            // the header never animates for its own sake.
+            const pill = document.getElementById('engine-pill');
+            if (pill) pill.classList.toggle('is-preparing', !!t && t !== 'Engine Online');
         }
         async function _warmup() {
             if (_warmed) return;
@@ -83,6 +88,21 @@
             });
             await idle();
             try {
+                // prefetch.js (loaded on both the sign-in page and here)
+                // owns the download queue: it streams big files in quarters
+                // with pauses and keeps the progress readout.
+                const P = window.__elfakPrefetch;
+                if (P) {
+                    P.onProgress((e) => {
+                        if (e.done) return;
+                        _setEngineTxt(e.pct ? `Preparing ${e.label} ${e.pct}%` : 'Engine Online');
+                    });
+                    await P.warm(P.assets);
+                    _setEngineTxt('Engine Online');
+                    return;
+                }
+                // No prefetch engine (very old browser): fall back to the
+                // original sequential vendor load.
                 const steps = [
                     ['jszip', () => ensureVendor('jszip')],
                     ['xlsx', () => ensureVendor('xlsx')],
@@ -2064,7 +2084,7 @@
 
             layer.classList.toggle('editing', _layoutEditActive);
             editBtn.textContent = _layoutEditActive ? '✕ Done Editing' : '✥ Edit Layout';
-            editBtn.style.background = _layoutEditActive ? 'rgba(16,185,129,.18)' : '';
+            editBtn.style.background = _layoutEditActive ? 'var(--accent-soft)' : '';
             editBtn.style.borderColor = _layoutEditActive ? 'var(--accent)' : '';
             resetBtn.style.display = _layoutEditActive ? '' : 'none';
             hint.style.display = _layoutEditActive ? '' : 'none';
@@ -2985,7 +3005,7 @@
             toast.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(10px);
                 background:var(--accent-grad);color:white;padding:10px 22px;border-radius:30px;
                 font-size:12px;font-weight:600;font-family:var(--sans);z-index:99000;
-                box-shadow:0 4px 20px rgba(16,185,129,.45);opacity:0;
+                box-shadow:0 4px 20px var(--accent-glow);opacity:0;
                 transition:all .35s var(--spring)`;
             document.body.appendChild(toast);
             requestAnimationFrame(() => {
@@ -3053,7 +3073,7 @@
                 const desc = r.description ?
                     `<div style="font-size:9px;color:var(--accent);font-family:var(--mono);margin-bottom:2px">${r.description}</div>` :
                     '';
-                return `<div class="run-card" style="${i===0?'border-color:rgba(16,185,129,.35);':''}">
+                return `<div class="run-card stagger" style="--n:${i}${i===0?';border-color:var(--accent-line);':''}">
               <div class="run-card-top"><span class="run-mod">${ic} ${r.module}</span><span class="run-time">${ts}</span></div>
               <div style="font-size:9px;color:var(--muted);font-family:var(--mono);margin-bottom:2px">ID: ${short}</div>
               ${desc}
@@ -3110,7 +3130,7 @@
             t.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(10px);
                 background:var(--accent-grad);color:#fff;padding:10px 22px;border-radius:30px;
                 font-size:12px;font-weight:600;font-family:var(--sans);z-index:99000;
-                box-shadow:0 4px 20px rgba(16,185,129,.45);opacity:0;
+                box-shadow:0 4px 20px var(--accent-glow);opacity:0;
                 transition:all .35s var(--spring)`;
             document.body.appendChild(t);
             requestAnimationFrame(() => {

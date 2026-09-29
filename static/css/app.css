@@ -10,10 +10,23 @@
     --panel-hd: rgba(0,0,0,.025);
     --border: rgba(0,0,0,.09); --border-strong: rgba(0,0,0,.16);
     --txt: #1d1d1f; --txt2: #515154; --muted: #86868b;
-    --accent: #059669; --accent2: #34d399;
-    --accent-grad: linear-gradient(135deg,#34d399,#059669);
-    --accent-soft: rgba(5,150,105,.10); --accent-line: rgba(5,150,105,.30);
-    --focus: rgba(5,150,105,.55);
+    /* The green has two opposite jobs, so it gets two tokens.
+       --accent is INK: text, icons and hairlines sitting on the panel,
+       so it must be dark enough to read on white (5.3:1).
+       --accent-fill is FILL: a solid block that carries its own text via
+       --on-accent. Light mode fills with the bright spring green and sets
+       dark text on it; dark mode fills with the deep green and sets white.
+       One value cannot serve both — that is what made each theme look
+       wrong in turn. */
+    --accent: #0e7a5f; --accent2: #12b981;
+    --accent-fill: #12b981; --on-accent: #04241a;
+    --accent-grad: linear-gradient(135deg, var(--accent2), var(--accent-fill));
+    --accent-soft: rgba(18,185,129,.13); --accent-line: rgba(14,122,95,.30);
+    --focus: rgba(18,185,129,.55);
+    /* Halo behind accent buttons. Bright in light mode, where a soft
+       bloom reads as lift; restrained in dark, where a strong glow is
+       exactly the glare this palette exists to avoid. */
+    --accent-glow: rgba(18,185,129,.35);
     --red: #e5484d; --amber: #f5a524; --blue: #0a84ff;
     --input: #ffffff; --hover: rgba(0,0,0,.045);
     --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
@@ -35,7 +48,18 @@
     --panel-hd: rgba(255,255,255,.04);
     --border: rgba(255,255,255,.12); --border-strong: rgba(255,255,255,.22);
     --txt: #f5f5f7; --txt2: #c7c7cc; --muted: #98989f;
-    --accent-soft: rgba(52,211,153,.13);
+    /* The green is inverted here on purpose. On black, a luminous mint
+       fill (the old #34d399, relative luminance .50) glares and tires the
+       eye, so the *fill* becomes the deep green and white sits on it at
+       6.5:1. The bright value survives only as ink, where it is small,
+       thin and genuinely needs to lift off the background (9.2:1). */
+    --accent: #45d69a; --accent2: #2f9c73;
+    --accent-fill: #0d6b4d; --on-accent: #ffffff;
+    --accent-grad: linear-gradient(135deg, var(--accent-fill), var(--accent));
+    --accent-soft: rgba(69,214,154,.13);
+    --accent-line: rgba(69,214,154,.30);
+    --focus: rgba(69,214,154,.55);
+    --accent-glow: rgba(69,214,154,.20);
     --input: #2c2c2e; --hover: rgba(255,255,255,.07);
     --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
     --shadow-md: 0 4px 16px rgba(0,0,0,.5);
@@ -86,7 +110,7 @@ button:active, .btn:active, .hdr-btn:active, .mtab:active, .ptab:active,
 .pill-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .hdr-user { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .avatar {
-    width: 34px; height: 34px; border-radius: 50%; background: var(--accent-grad); color: #fff;
+    width: 34px; height: 34px; border-radius: 50%; background: var(--accent-grad); color: var(--on-accent);
     display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; flex-shrink: 0;
 }
 .hdr-btn {
@@ -168,7 +192,7 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
     transition: border-color .2s var(--ease), transform 100ms var(--press);
 }
 .dz:hover { border-color: var(--accent); }
-.dz.over { border-color: var(--accent); background: rgba(5,150,105,.18); }
+.dz.over { border-color: var(--accent); background: var(--accent-soft); }
 .dz-text { font-size: 14.5px; font-weight: 700; }
 .dz input.fi { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .badge { font-size: 13px; line-height: 1.6; padding: 11px 14px; border-radius: var(--r-md); background: var(--accent-soft); border: 1.5px solid var(--accent-line); color: var(--txt2); }
@@ -191,7 +215,7 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
     transition: all .25s var(--spring); border: none; background: transparent;
 }
 .mtab:hover { color: var(--accent); }
-.mtab.active { color: #fff; background: var(--accent-grad); box-shadow: var(--shadow-sm); }
+.mtab.active { color: var(--on-accent); background: var(--accent-fill); box-shadow: var(--shadow-sm); }
 
 /* ── Cards (spring entrance, staggered) ── */
 .card { display: none; flex-direction: column; gap: 12px; }
@@ -208,7 +232,7 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 /* ── Console / run ── */
 .console { display: flex; gap: 14px; align-items: center; padding: 14px 18px; }
 .run-btn {
-    font-size: 16px; font-weight: 800; letter-spacing: -.01em; color: #fff; background: var(--accent-grad);
+    font-size: 16px; font-weight: 800; letter-spacing: -.01em; color: var(--on-accent); background: var(--accent-grad);
     border: none; border-radius: var(--pill); padding: 15px 30px; cursor: pointer; box-shadow: var(--shadow-md);
     transition: filter .2s var(--ease), box-shadow .2s var(--ease); white-space: nowrap;
 }
@@ -227,7 +251,7 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 .ptabs { display: flex; gap: 4px; background: var(--hover); border: 1px solid var(--border); border-radius: var(--pill); padding: 4px; margin: 12px 14px 0; flex-shrink: 0; }
 .ptab { flex: 1; text-align: center; font-size: 13.5px; font-weight: 700; padding: 10px 12px; border-radius: var(--pill); cursor: pointer; color: var(--muted); transition: all .25s var(--spring); }
 .ptab:hover:not(.on) { color: var(--txt); }
-.ptab.on { background: var(--accent-grad); color: #fff; box-shadow: var(--shadow-sm); }
+.ptab.on { background: var(--accent-fill); color: var(--on-accent); box-shadow: var(--shadow-sm); }
 .preview-foot { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; align-items: center; }
 .run-meta { font-size: 13px; color: var(--muted); }
 .canvas-wrap {
@@ -297,7 +321,7 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 .etool { border: 1px solid var(--border); background: transparent; border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--txt2); font-size: 13px; }
 .etool:hover { background: var(--hover); color: var(--txt); }
 .etool.active-tool { background: var(--accent-soft); border-color: var(--accent-line); color: var(--txt); }
-.etool.primary { background: var(--accent-grad); color: #fff; border: none; }
+.etool.primary { background: var(--accent-fill); color: var(--on-accent); border: none; }
 .sep-dot, .sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 4px; }
 .layout-hint { font-size: 12.5px; color: var(--muted); }
 
@@ -344,14 +368,14 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
     font-size: 13px; font-weight: 700; padding: 8px 15px; border-radius: var(--pill); cursor: pointer;
     border: 1.5px solid var(--border-strong); background: var(--hover); color: var(--txt); text-decoration: none;
 }
-.run-act.primary, .dl-btn.primary { background: var(--accent-grad); color: #fff; border: none; }
+.run-act.primary, .dl-btn.primary { background: var(--accent-fill); color: var(--on-accent); border: none; }
 .g-summary { font-size: 13.5px; line-height: 1.6; }
 #g-result-box:empty { display: none; }
 #g-result-box.visible { display: block; }
 
 /* ── DEM / misc ── */
 .purple { color: var(--accent); }
-.primary { background: var(--accent-grad); color: #fff; }
+.primary { background: var(--accent-fill); color: var(--on-accent); }
 .danger { color: var(--red); }
 .info { color: var(--blue); }
 .warn { color: var(--amber); }
@@ -363,7 +387,6 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 @keyframes sheetIn { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
 .login-card h2 { font-size: 22px; letter-spacing: -.02em; margin: 10px 0 4px; text-align: center; }
 #theme-flash { position: fixed; inset: 0; pointer-events: none; z-index: 999; opacity: 0; background: var(--bg); }
-.theme-ripple { position: fixed; border-radius: 50%; pointer-events: none; z-index: 998; }
 
 /* ── History drawer (springs from the right, symmetric exit) ── */
 #hist-drawer {

@@ -38,8 +38,13 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="/static/css/app.css?v=20260927-1" />
-    <link rel="stylesheet" href="/static/css/forestry.css?v=20260929-8" />
+    <!-- Leaflet is needed for the map on the first screen, so it is
+         preloaded rather than waiting for the deferred script to run. -->
+    <link rel="preload" as="script" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin />
+    <link rel="preload" as="script" href="/static/js/prefetch.js?v=20260929-2" />
+    <link rel="stylesheet" href="/static/css/app.css?v=20260929-2" />
+    <link rel="stylesheet" href="/static/css/forestry.css?v=20260929-9" />
+    <link rel="stylesheet" href="/static/css/motion.css?v=20260929-2" />
 </head>
 <body>
     <div id="theme-flash"></div>
@@ -69,7 +74,7 @@
                         <path d="M24 8 L33 22 H28.5 L35 31 H13 L19.5 22 H15 Z" fill="#fff" opacity="0.96"/>
                         <rect x="22" y="31" width="4" height="7" rx="1.5" fill="#fff" opacity="0.9"/>
                         <defs><linearGradient id="elfakG" x1="2" y1="2" x2="46" y2="46" gradientUnits="userSpaceOnUse">
-                            <stop stop-color="#2fd06e"/><stop offset="1" stop-color="#16833e"/>
+                            <stop stop-color="var(--accent-bright)"/><stop offset="1" stop-color="var(--accent-fill)"/>
                         </linearGradient></defs>
                     </svg>
                 </div>
@@ -348,14 +353,14 @@
                                         <button onclick="_filterDemList('','44N')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-44">Zone 44N</button>
                                         <button onclick="_filterDemList('','45N')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-45">Zone 45N</button>
                                     </div>
-                                    <select id="f-dem-catalog" size="5" style="height:auto;border-color:rgba(16,185,129,.25);font-size:11px;font-family:var(--mono);padding:4px;min-height:65px" onchange="_onDemSelect(this)">
+                                    <select id="f-dem-catalog" size="5" style="height:auto;border-color:var(--accent-line);font-size:11px;font-family:var(--mono);padding:4px;min-height:65px" onchange="_onDemSelect(this)">
                                         <option value="" disabled>Loading DEM catalog from GitHub…</option>
                                     </select>
                                     <div id="f-dem-cat-info" style="font-size:11px;color:var(--muted);font-family:var(--mono);min-height:16px;line-height:1.6">
                                     </div>
                                     <div id="f-dem-dl-wrap" style="display:none;margin-top:4px">
                                         <div style="font-size:11px;color:var(--accent);font-family:var(--mono);margin-bottom:3px" id="f-dem-dl-label">Downloading DEM…</div>
-                                        <div style="height:4px;background:rgba(16,185,129,.12);border-radius:4px;overflow:hidden">
+                                        <div style="height:4px;background:var(--accent-soft);border-radius:4px;overflow:hidden">
                                             <div id="f-dem-dl-bar" style="height:100%;background:var(--accent-grad);width:0%;transition:width .4s;border-radius:4px">
                                             </div>
                                         </div>
@@ -800,9 +805,11 @@
         </div><!-- main -->
     </div><!-- shell -->
 
-    <script defer src="/static/js/theme.js?v=20260929-2"></script>
-    <script defer src="/static/js/app.js?v=20260929-7"></script>
+    <script defer src="/static/js/theme.js?v=20260929-3"></script>
+    <script defer src="/static/js/prefetch.js?v=20260929-2"></script>
+    <script defer src="/static/js/app.js?v=20260929-8"></script>
     <script defer src="/static/js/dock.js?v=20260927-1"></script>
     <script defer src="/static/js/dock-resize.js?v=20260927-1"></script>
+    <script defer src="/static/js/boot.js?v=20260929-1"></script>
 </body>
 </html>

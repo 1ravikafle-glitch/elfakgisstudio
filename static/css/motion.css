@@ -1,0 +1,333 @@
+/* ================================================================
+   Elfak GIS Studio — motion layer
+   ------------------------------------------------------------
+   Loaded after app.css and forestry.css, so it can animate the
+   finished design without fighting the base rules.
+
+   The vocabulary already exists in app.css — --spring (a firm
+   decelerating curve), --ease (standard in/out), --press — and this
+   file adds to it rather than replacing it:
+
+   · a first-paint reveal, so the studio assembles instead of
+     appearing all at once
+   · a staggered entrance for panels, rows and history cards
+   · micro-interactions on the controls people actually touch
+   · skeletons and a shimmer for the moments data is still arriving
+   · a view transition when the mode changes, so the swap reads as
+     one surface moving rather than two panels blinking
+
+   Everything here is decorative. If it does not run, the app is
+   unchanged; and @media (prefers-reduced-motion: reduce) at the
+   bottom removes it entirely.
+   ================================================================ */
+
+:root {
+    /* Slightly longer than the base 0.2-0.25s: enough to read as
+       motion, short enough never to feel like waiting. */
+    --motion-fast: .18s;
+    --motion-base: .32s;
+    --motion-slow: .55s;
+    --motion-stagger: 45ms;
+    --shimmer: linear-gradient(100deg,
+        transparent 20%,
+        color-mix(in srgb, var(--accent) 12%, transparent) 45%,
+        transparent 70%);
+}
+
+/* ── First paint: the studio assembles ───────────────────────────
+   Elements fade up in document order via --i, so the eye is led
+   header → panels → workspace without a single layout jump. */
+.shell > .hdr,
+.shell > .main > .panel {
+    animation: mfRise var(--motion-slow) var(--spring) both;
+    animation-delay: calc(var(--i, 0) * var(--motion-stagger));
+}
+.hdr    { --i: 0; }
+#left-nav-panel  { --i: 1; }
+#right-panel     { --i: 2; }
+
+@keyframes mfRise {
+    from { opacity: 0; transform: translateY(10px) scale(.995); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* ── Staggered lists ────────────────────────────────────────────
+   History cards and result rows arrive one after another. The cap
+   keeps a long list from taking seconds to finish appearing. */
+.stagger > * {
+    animation: mfRowIn var(--motion-base) var(--spring) both;
+    animation-delay: calc(min(var(--n, 0), 8) * var(--motion-stagger));
+}
+@keyframes mfRowIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* ── Controls: lift on hover, sink on press ─────────────────────
+   A 1px lift and a shadow bloom. Both are compositor-friendly
+   (transform + opacity), so they stay smooth on a busy map. */
+.hdr-btn,
+.run-act,
+.dl-btn,
+.btn,
+.seg-btn,
+.pw-toggle,
+.close-drawer,
+.drawer-clear,
+.tog,
+.ptab,
+.mtab {
+    transition:
+        transform var(--motion-fast) var(--spring),
+        box-shadow var(--motion-fast) var(--ease),
+        background-color var(--motion-fast) var(--ease),
+        border-color var(--motion-fast) var(--ease),
+        color var(--motion-fast) var(--ease);
+}
+.hdr-btn:hover,
+.run-act:hover,
+.dl-btn:hover,
+.btn:hover,
+.seg-btn:hover,
+.close-drawer:hover,
+.drawer-clear:hover {
+    transform: translateY(-1px);
+}
+.hdr-btn:active,
+.run-act:active,
+.dl-btn:active,
+.btn:active,
+.seg-btn:active,
+.pw-toggle:active,
+.close-drawer:active,
+.drawer-clear:active {
+    transform: translateY(0) scale(.97);
+    transition-duration: 80ms;
+}
+.run-act:focus-visible,
+.dl-btn:focus-visible,
+.btn:focus-visible,
+.seg-btn:focus-visible,
+.drawer-clear:focus-visible,
+.close-drawer:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* The active tab gets a soft glow so the current mode is obvious
+   before you read it. */
+.ptab.on,
+.mtab.active,
+.tog.on {
+    box-shadow: 0 0 0 1px var(--accent-line), 0 4px 16px -6px var(--accent);
+    transition:
+        transform var(--motion-fast) var(--spring),
+        box-shadow var(--motion-base) var(--ease),
+        background-color var(--motion-base) var(--ease);
+}
+
+/* ── Mode swap ───────────────────────────────────────────────────
+   Cross-fade + a short rise when the active card changes, so
+   switching modules feels like the surface turning over. */
+.card.active {
+    animation: mfSwap var(--motion-base) var(--spring) both;
+}
+@keyframes mfSwap {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* ── Loading: skeletons and a travelling shimmer ────────────────
+   Used where the app is waiting on the network. The placeholder has
+   the shape of the content, so nothing jumps when it lands. */
+.mf-skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--r-sm, 8px);
+    background: var(--hover);
+    min-height: 12px;
+}
+.mf-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--shimmer);
+    transform: translateX(-100%);
+    animation: mfShimmer 1.5s var(--ease) infinite;
+}
+@keyframes mfShimmer {
+    to { transform: translateX(100%); }
+}
+
+/* The engine pill breathes while it is preparing, then settles. */
+.pill.is-preparing .pill-dot {
+    animation: mfPulse 1.4s var(--ease) infinite;
+}
+@keyframes mfPulse {
+    0%, 100% { opacity: 1;   transform: scale(1); }
+    50%      { opacity: .45; transform: scale(.82); }
+}
+
+/* ── Progress bar ───────────────────────────────────────────────
+   A travelling highlight on the fill, so a long pipeline run has
+   visible motion between updates rather than a frozen bar. */
+.prog-bar-fill { position: relative; overflow: hidden; }
+.prog-bar-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--shimmer);
+    transform: translateX(-100%);
+    animation: mfShimmer 1.8s var(--ease) infinite;
+}
+
+/* ── Result image settles in ────────────────────────────────────
+   The map output is the thing the user waited for; give it a
+   deliberate, slightly larger entrance than the chrome. */
+#out-img {
+    transition: opacity .5s var(--ease), transform .6s var(--spring);
+}
+
+/* ── Drawer ──────────────────────────────────────────────────────
+   The history drawer already slides; this adds the content fade so
+   the list does not appear before the panel has arrived. */
+#hist-drawer.open .drawer-body {
+    animation: mfDrawerIn var(--motion-base) var(--ease) both;
+}
+@keyframes mfDrawerIn {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* ── Focus ring for keyboard users, without a mouse-click ring ── */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* ── Theme switch: a genuine colour tween ───────────────────────
+   Snapping between light and dark reads as a jump because every
+   colour changes in a single frame. The fix is not a wipe or a
+   cross-fade between two frozen screenshots — it is to let the
+   palette actually interpolate, so the interface travels from A to
+   H through B, C, D, E, F and G like any other animated value.
+
+   Custom properties do not animate by default: the browser sees
+   "custom property" and jumps. Registering each one with @property
+   and a <color> syntax makes it a real, interpolable value, so a
+   single transition on :root tweens the entire design system at
+   once and every element that consumes a token follows along.
+
+   Gradients cannot interpolate, so --accent-grad and friends are
+   rebuilt from the animated colours instead of carrying literal
+   hexes — that way the gradient tracks the tween rather than
+   snapping when it finishes. */
+@property --bg { syntax: '<color>'; inherits: true; initial-value: #fafafa; }
+@property --bg2 { syntax: '<color>'; inherits: true; initial-value: #f4f4f5; }
+@property --panel { syntax: '<color>'; inherits: true; initial-value: rgba(255,255,255,.88); }
+@property --panel-solid { syntax: '<color>'; inherits: true; initial-value: #ffffff; }
+@property --panel-hd { syntax: '<color>'; inherits: true; initial-value: rgba(24,24,27,.03); }
+@property --input { syntax: '<color>'; inherits: true; initial-value: #ffffff; }
+@property --txt { syntax: '<color>'; inherits: true; initial-value: #18181b; }
+@property --txt2 { syntax: '<color>'; inherits: true; initial-value: #3f3f46; }
+@property --muted { syntax: '<color>'; inherits: true; initial-value: #71717a; }
+@property --muted-on-tint { syntax: '<color>'; inherits: true; initial-value: #6b6b74; }
+@property --border { syntax: '<color>'; inherits: true; initial-value: #e4e4e7; }
+@property --border-strong { syntax: '<color>'; inherits: true; initial-value: #d4d4d8; }
+@property --accent { syntax: '<color>'; inherits: true; initial-value: #16833e; }
+@property --accent2 { syntax: '<color>'; inherits: true; initial-value: #12682f; }
+@property --accent-bright { syntax: '<color>'; inherits: true; initial-value: #2fd06e; }
+@property --accent-strong { syntax: '<color>'; inherits: true; initial-value: #12682f; }
+@property --accent-fill { syntax: '<color>'; inherits: true; initial-value: #2fd06e; }
+@property --on-accent { syntax: '<color>'; inherits: true; initial-value: #06281a; }
+@property --accent-soft { syntax: '<color>'; inherits: true; initial-value: rgba(33,196,93,.12); }
+@property --accent-line { syntax: '<color>'; inherits: true; initial-value: rgba(33,196,93,.34); }
+@property --focus { syntax: '<color>'; inherits: true; initial-value: rgba(33,196,93,.5); }
+@property --hover { syntax: '<color>'; inherits: true; initial-value: rgba(33,196,93,.07); }
+@property --accent-glow { syntax: '<color>'; inherits: true; initial-value: rgba(47,208,110,.30); }
+@property --red { syntax: '<color>'; inherits: true; initial-value: #a3281c; }
+@property --red-bright { syntax: '<color>'; inherits: true; initial-value: #ef4343; }
+@property --blue { syntax: '<color>'; inherits: true; initial-value: #1d5fa8; }
+@property --amber { syntax: '<color>'; inherits: true; initial-value: #8a4a08; }
+
+/* The tween is armed only once the first theme is on screen, so the
+   initial paint never animates from the registered initial-values. */
+:root.theme-tween {
+    transition:
+        --bg 620ms var(--ease),
+        --bg2 620ms var(--ease),
+        --panel 620ms var(--ease),
+        --panel-solid 620ms var(--ease),
+        --panel-hd 620ms var(--ease),
+        --input 620ms var(--ease),
+        --txt 620ms var(--ease),
+        --txt2 620ms var(--ease),
+        --muted 620ms var(--ease),
+        --muted-on-tint 620ms var(--ease),
+        --border 620ms var(--ease),
+        --border-strong 620ms var(--ease),
+        --accent 620ms var(--ease),
+        --accent2 620ms var(--ease),
+        --accent-bright 620ms var(--ease),
+        --accent-strong 620ms var(--ease),
+        --accent-fill 620ms var(--ease),
+        --on-accent 620ms var(--ease),
+        --accent-soft 620ms var(--ease),
+        --accent-line 620ms var(--ease),
+        --focus 620ms var(--ease),
+        --hover 620ms var(--ease),
+        --accent-glow 620ms var(--ease),
+        --red 620ms var(--ease),
+        --red-bright 620ms var(--ease),
+        --blue 620ms var(--ease),
+        --amber 620ms var(--ease);
+}
+
+/* Legacy fallback for engines without @property: a scoped cross-fade
+   stands in so the change is still a transition rather than a cut. */
+.theme-fade body,
+.theme-fade .panel,
+.theme-fade .hdr,
+.theme-fade .card,
+.theme-fade .run-card,
+.theme-fade .badge,
+.theme-fade input,
+.theme-fade select,
+.theme-fade .theme-btn,
+.theme-fade .run-act,
+.theme-fade .run-btn,
+.theme-fade .dl-btn,
+.theme-fade .btn,
+.theme-fade .seg-btn,
+.theme-fade .drawer,
+.theme-fade .ov-item,
+.theme-fade .logo-text,
+.theme-fade .panel-hd,
+.theme-fade .prog-msg {
+    transition:
+        background-color 420ms var(--ease),
+        border-color 420ms var(--ease),
+        color 420ms var(--ease),
+        box-shadow 420ms var(--ease);
+}
+
+/* ── Reduced motion: remove the decoration, keep the states ─────
+   The existing rules already flatten durations; this also stops the
+   looping animations, which would otherwise keep repainting. */
+@media (prefers-reduced-motion: reduce) {
+    .mf-skeleton::after,
+    .pill.is-preparing .pill-dot,
+    .prog-bar-fill::after {
+        animation: none !important;
+    }
+    .mf-skeleton::after { transform: none; opacity: 0; }
+    .hdr-btn:hover, .run-act:hover, .dl-btn:hover, .btn:hover,
+    .seg-btn:hover, .close-drawer:hover, .drawer-clear:hover,
+    .hdr-btn:active, .run-act:active, .dl-btn:active, .btn:active,
+    .seg-btn:active, .pw-toggle:active, .close-drawer:active,
+    .drawer-clear:active {
+        transform: none !important;
+    }
+}
+/* Same escape hatch as app.css, for the in-app "reduce motion" toggle. */
+.reduce-motion .mf-skeleton::after,
+.reduce-motion .pill.is-preparing .pill-dot,
+.reduce-motion .prog-bar-fill::after { animation: none !important; }
+.reduce-motion .mf-skeleton::after { opacity: 0; }

@@ -54,16 +54,30 @@
     --border: #e4e4e7;
     --border-strong: #d4d4d8;
 
-    /* Accent — forestry's moss family */
-    --accent: #16833e;       /* moss-700 · text, buttons, links · 4.83:1 */
+    /* Accent — forestry's moss family, split by job so each theme can
+       carry the weight that suits it.
+
+       The two roles are genuinely opposites and that is deliberate:
+       --accent is INK (text, links, icons, hairlines) and must clear AA
+       against the surface it sits on.
+       --accent-fill is a solid block and takes its own text from
+       --on-accent, so light mode is free to use the *bright* moss with
+       near-black text (7.8:1) and read fresh and airy, while dark mode
+       uses the *deep* moss with white text (6.6:1) and stop glaring.
+       Collapsing these into one value is what made each theme look
+       wrong in turn: a single green cannot be both. */
+    --accent: #16833e;       /* moss-700 · ink on light · 4.6:1 bg, 4.8:1 panel */
     --accent2: #12682f;
-    --accent-bright: #21c45d; /* moss-600 · fills, progress, map accents only */
+    --accent-bright: #3ee07a; /* lighter step · gradients, progress, map · never text */
     --accent-strong: #12682f;
-    --accent-grad: linear-gradient(135deg, #2fd06e, #16833e);
+    --accent-fill: #2fd06e;  /* bright spring moss · carries --on-accent */
+    --on-accent: #06281a;    /* 7.8:1 on --accent-fill */
+    --accent-grad: linear-gradient(135deg, var(--accent-bright), var(--accent-fill));
     --accent-soft: rgba(33, 196, 93, .12);
     --accent-line: rgba(33, 196, 93, .34);
     --focus: rgba(33, 196, 93, .5);
     --hover: rgba(33, 196, 93, .07);
+    --accent-glow: rgba(47, 208, 110, .30);
 
     /* Status — forestry's destructive / flag families.
        Text steps are darkened for AA; the bright steps are fills only. */
@@ -123,15 +137,27 @@
     --border: #3a3a41;
     --border-strong: #4b4b53;
 
-    --accent: #3bde77;      /* forestry dark primary · 10.0:1 on --bg */
+    /* Dark inverts the roles rather than just dimming. The old pairing set
+       --accent, --accent-bright *and* the gradient all to #3bde77, a
+       luminous green (relative luminance .55) that glared on a near-black
+       surface and was tiring to look at.
+
+       Now: --accent stays light because small text on dark genuinely needs
+       to lift (9.7:1). But the *fill* drops to the deep moss (luminance
+       .11, a fifth of the old value) with white text at 6.6:1, so buttons
+       and progress read as green without lighting up the room. */
+    --accent: #46d97c;      /* ink on dark · 9.7:1 on --bg */
     --accent2: #7fca9c;
-    --accent-bright: #3bde77;
+    --accent-bright: #2fae63; /* progress + map accents · half the old glare */
     --accent-strong: #8fd6a8;
-    --accent-grad: linear-gradient(135deg, #3bde77, #16833e);
+    --accent-fill: #116b3c;  /* deep moss · carries --on-accent */
+    --on-accent: #ffffff;    /* 6.6:1 on --accent-fill */
+    --accent-grad: linear-gradient(135deg, var(--accent-bright), var(--accent-fill));
     --accent-soft: rgba(59, 222, 119, .16);
     --accent-line: rgba(59, 222, 119, .38);
     --focus: rgba(59, 222, 119, .55);
     --hover: rgba(59, 222, 119, .10);
+    --accent-glow: rgba(70, 217, 124, .18);
 
     --red: #f08a80;
     --red-bright: #ef4343;
@@ -348,7 +374,10 @@ a:focus-visible,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    /* Holds the letter "F", so it must not sit under a hardcoded white:
+       on light mode's bright gradient that is ~1.8:1. --on-accent tracks
+       the theme and stays legible over both ends of the gradient. */
+    color: var(--on-accent);
     font-size: 10px;
     font-weight: 800;
     flex-shrink: 0;
@@ -435,7 +464,7 @@ h1, h2, h3 {
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 
-.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary { background: var(--accent-fill); color: var(--on-accent); }
 
 .btn-primary:hover:not(:disabled) {
     background: var(--accent2);
@@ -665,8 +694,12 @@ body.login-page {
 }
 
 .seg {
+    position: relative;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    /* auto-flow rather than a hardcoded 3, so the same control works for
+       any number of options without the columns drifting out of step. */
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
     gap: 2px;
     padding: 3px;
     background: var(--bg2);
@@ -674,7 +707,35 @@ body.login-page {
     border-radius: var(--r-md);
 }
 
+/* The travelling highlight.
+   One element, moved rather than redrawn per button: selecting a new
+   option slides this across the intervening ones on a spring, which is
+   what makes the control feel like one object instead of three buttons
+   that blink. Sized and placed from the real button geometry by theme.js
+   so it stays aligned at any width. */
+.seg-thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-radius: var(--r-sm);
+    background: var(--panel-solid);
+    box-shadow: var(--shadow-sm), 0 0 0 1px color-mix(in srgb, var(--accent-fill) 22%, transparent);
+    pointer-events: none;
+    z-index: 0;
+    will-change: transform;
+    transition:
+        transform 420ms var(--spring),
+        width 420ms var(--spring),
+        height 420ms var(--spring),
+        background-color 620ms var(--ease),
+        box-shadow 620ms var(--ease);
+}
+
 .seg-btn {
+    position: relative;
+    z-index: 1;
     background: none;
     border: none;
     border-radius: var(--r-sm);
@@ -686,15 +747,18 @@ body.login-page {
        where --muted lands at 4.40:1 and fails AA. */
     color: var(--muted-on-tint);
     cursor: pointer;
-    transition: background .18s var(--ease), color .18s var(--ease);
+    transition: color .18s var(--ease), transform .18s var(--spring);
 }
 
 .seg-btn:hover { color: var(--txt); }
+.seg-btn:active { transform: scale(.96); }
 
+/* The thumb now carries the selected surface, so the button itself must
+   not paint one or the two would double up during the slide. */
 .seg-btn[aria-pressed="true"] {
-    background: var(--panel-solid);
+    background: none;
     color: var(--txt);
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
 }
 
 .seg-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -708,6 +772,21 @@ body.login-page {
 
 .login-foot a { color: var(--accent); font-weight: 600; text-decoration: none; }
 .login-foot a:hover { text-decoration: underline; }
+
+/* Quiet status line for the background studio warm-up. It must never
+   look like an error or an obstacle, so it stays muted and small. */
+.login-prep {
+    margin: 4px 0 0;
+    font-size: .72rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+    min-height: 1.2em;
+    opacity: 0;
+    animation: prepIn .5s var(--spring) .15s forwards;
+}
+.login-prep[hidden] { display: none; }
+@keyframes prepIn { to { opacity: 1; } }
 
 /* Narrow phones: the reference keeps the card padding, but 40px of it
    on a 360px screen leaves ~40px of input. Trim the sides only. */
@@ -760,7 +839,7 @@ body.login-page {
 .etool.primary,
 .run-act.primary,
 .dl-btn.primary {
-    background: var(--accent);
+    background: var(--accent-fill);
 }
 
 .run-btn:hover,
@@ -773,7 +852,7 @@ body.login-page {
 }
 
 .prog-bar-fill {
-    background: linear-gradient(90deg, var(--accent-bright), var(--accent));
+    background: linear-gradient(90deg, var(--accent-bright), var(--accent-fill));
 }
 
 /* The empty-canvas message sits on the preview panel, where --muted

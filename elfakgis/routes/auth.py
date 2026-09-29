@@ -185,11 +185,13 @@ def _sso_fallback_page():
            box-shadow:0 12px 40px rgba(18,33,27,.12); }}
   h1 {{ font-size:20px; margin:0 0 8px; }}
   p  {{ font-size:14px; color:#3f3f46; line-height:1.6; margin:0 0 20px; }}
-  a.btn {{ display:inline-block; background:#16833e; color:#ffffff; text-decoration:none;
+  /* Light-theme green with near-black label: 7.8:1, where white on the
+     old #16833e was fine but white on the bright end was ~2.3:1. */
+  a.btn {{ display:inline-block; background:#2fd06e; color:#06281a; text-decoration:none;
            padding:11px 22px; border-radius:10px; font-weight:600; font-size:14px; }}
-  a.btn:hover {{ background:#12682f; }}
+  a.btn:hover {{ background:#3ee07a; }}
   .mark {{ width:44px; height:44px; border-radius:12px; margin:0 auto 16px;
-           background:linear-gradient(135deg,#2fd06e,#16833e); color:#fff;
+           background:linear-gradient(135deg,#3ee07a,#2fd06e); color:#06281a;
            display:flex; align-items:center; justify-content:center;
            font-size:20px; font-weight:800; }}
 </style></head>

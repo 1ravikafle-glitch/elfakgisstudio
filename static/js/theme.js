@@ -44,16 +44,23 @@ function _upsertThemeColor() {
 }
 
 function _applyTheme(dark, animate, persist = true) {
+    if (!animate) { _swapTheme(dark, persist); return; }
+    _transitionTheme(() => _swapTheme(dark, persist));
+}
+
+// The actual mutation. Kept separate from _applyTheme so it can be handed
+// to startViewTransition as a callback, which requires the swap to be a
+// single synchronous block.
+function _swapTheme(dark, persist) {
     _dark = dark;
     const html = document.documentElement;
-    const flash = document.getElementById('theme-flash');
     const icon = document.getElementById('theme-icon');
     const label = document.getElementById('theme-label');
 
-    if (animate && flash) {
-        flash.style.opacity = '1';
-        setTimeout(() => { flash.style.opacity = '0'; }, 260);
-    }
+    // The old #theme-flash overlay is deliberately not used here. A
+    // full-screen element inside a View Transition gets baked into the
+    // snapshot, so it would paint a flat rectangle over the reveal
+    // instead of letting the circle show the new theme through.
 
     if (dark) {
         html.setAttribute('data-theme', 'dark');
@@ -96,10 +103,77 @@ function _applyTheme(dark, animate, persist = true) {
 }
 
 // ── The three-way selector (sign-in page) ──
+// The mode the thumb was last drawn for. Used to tell a genuine change
+// of selection (slide) from a re-render of the same one (no motion), so
+// first paint and OS-driven updates stay still.
+let _segRenderedMode = null;
+
 function _syncSegButtons() {
     document.querySelectorAll('.seg-btn[data-mode]').forEach(b => {
         b.setAttribute('aria-pressed', b.dataset.mode === _themeMode ? 'true' : 'false');
     });
+    const changed = _segRenderedMode !== _themeMode;
+    _segRenderedMode = _themeMode;
+    _moveSegThumbs(changed);
+}
+
+/* ── Travelling selection highlight ───────────────────────────────
+   The control used to repaint the newly selected button in place, so
+   choosing a different option was a blink rather than a move. One
+   .seg-thumb is measured against the real button geometry and then
+   translated, so the highlight slides across the options in between
+   and settles on the target with the same spring as everything else.
+
+   Geometry is read from the DOM rather than computed from a ratio, so
+   the thumb stays exact when the labels are different widths, when the
+   font loads late, or when the window resizes. */
+function _segReduceMotion() { return _reduceMotion(); }
+
+function _placeThumb(seg, btn, animate) {
+    const thumb = seg.querySelector('.seg-thumb');
+    if (!thumb || !btn) return;
+    if (!animate) {
+        // Suppress the transition for this frame so repositioning after a
+        // resize or first paint is instant rather than a long slide.
+        thumb.style.transition = 'none';
+    }
+    thumb.style.width = btn.offsetWidth + 'px';
+    thumb.style.height = btn.offsetHeight + 'px';
+    thumb.style.transform = 'translate3d(' + btn.offsetLeft + 'px,' + btn.offsetTop + 'px,0)';
+    if (!animate) {
+        // Force a style flush before restoring, otherwise the browser
+        // coalesces both writes and the thumb slides on first paint.
+        void thumb.offsetWidth;
+        thumb.style.transition = '';
+    }
+}
+
+function _moveSegThumbs(animate) {
+    document.querySelectorAll('.seg').forEach(seg => {
+        if (!seg.querySelector('.seg-thumb')) {
+            const t = document.createElement('span');
+            t.className = 'seg-thumb';
+            t.setAttribute('aria-hidden', 'true');
+            seg.appendChild(t);
+        }
+        const active = seg.querySelector('.seg-btn[aria-pressed="true"]')
+                   || seg.querySelector('.seg-btn[data-mode="' + _themeMode + '"]');
+        _placeThumb(seg, active, animate && !_segReduceMotion());
+    });
+}
+
+function _initSegThumbs() {
+    _moveSegThumbs(false);
+    // Font loading and container changes both alter the button boxes.
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => _moveSegThumbs(false)).catch(() => {});
+    }
+    if (typeof ResizeObserver === 'function') {
+        const ro = new ResizeObserver(() => _moveSegThumbs(false));
+        document.querySelectorAll('.seg').forEach(s => ro.observe(s));
+    } else {
+        window.addEventListener('resize', () => _moveSegThumbs(false));
+    }
 }
 
 function setThemeMode(mode) {
@@ -113,15 +187,47 @@ function setThemeMode(mode) {
 // on screen. Before the first press the app was tracking the OS, and this
 // is where that ends.
 function toggleTheme() {
-    const btn = document.getElementById('theme-btn');
-    if (btn) {
-        const r = document.createElement('span');
-        r.className = 'theme-ripple';
-        r.style.cssText = 'width:80px;height:80px;left:50%;top:50%;margin:-40px 0 0 -40px';
-        btn.appendChild(r);
-        setTimeout(() => r.remove(), 500);
-    }
     _applyTheme(!_dark, true);
+}
+
+/* ── Animated theme swap ──────────────────────────────────────────
+   A theme change repaints every colour in one frame, which is what
+   makes a light/dark toggle feel cheap.
+
+   The fix is to let the palette *interpolate*, so the interface is
+   seen travelling from one mode to the other through every
+   intermediate shade. motion.css registers the design tokens with
+   @property and puts one transition on :root; simply toggling the
+   attribute then tweens the whole system at once, and every element
+   consuming a token follows along.
+
+   A scoped cross-fade stands in on engines without @property, and
+   reduced-motion skips both and swaps instantly.
+   */
+function _reduceMotion() {
+    try { return matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch (_e) { return false; }
+}
+
+function _supportsTween() {
+    return typeof CSS !== 'undefined'
+        && typeof CSS.registerProperty === 'function';
+}
+
+function _transitionTheme(mutate) {
+    if (_reduceMotion()) { mutate(); return; }
+
+    if (_supportsTween()) {
+        // Arming the class is what makes the change animate; it stays on
+        // afterwards so later toggles are equally smooth.
+        document.documentElement.classList.add('theme-tween');
+        mutate();
+        return;
+    }
+
+    document.body.classList.add('theme-fade');
+    mutate();
+    setTimeout(() => document.body.classList.remove('theme-fade'), 460);
 }
 
 // Sync the controls with what is actually on screen once the DOM is ready.
@@ -131,4 +237,6 @@ document.addEventListener('DOMContentLoaded', () => {
         b.addEventListener('click', () => setThemeMode(b.dataset.mode));
     });
     _applyTheme(_dark, false, false);
+    // Drawn after the first paint so the thumb lands without animating in.
+    _initSegThumbs();
 });
