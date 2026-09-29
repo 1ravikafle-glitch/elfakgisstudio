@@ -485,7 +485,13 @@
             document.getElementById('comp-module').value = t;
             if (t === 'I') loadThesisOptions();
             const rb = document.getElementById('run-btn');
-            if (rb) rb.textContent = t === 'G' ? '📌 Generate Points' : t === 'I' ? '🗺 Generate Thesis Map' : '▶ Run Pipeline';
+            if (rb) rb.textContent = t === 'G' ? '📌 Generate Points' : t === 'I' ? '🗺 Generate Thesis Map' : t === 'H' ? '🚀 Generate Maps' : '▶ Run Pipeline';
+            // Tall cards (esp. H) can leave their run button clipped under
+            // the console strip on short screens — reset the panel scroll so
+            // every control is reachable without hunting.
+            try {
+                document.querySelector('.panel-body.config-area').scrollTop = 0;
+            } catch (_) {}
         }
 
         function setCMode(m) { cMode = m;
@@ -694,6 +700,7 @@
 
         async function runPipeline() {
             if (activeModule === 'G') { await runG(); return; }
+            if (activeModule === 'H') { await runGroupH(); return; }
             if (activeModule === 'I') { await runThesis(); return; }
             const title = document.getElementById('g-title').value.trim();
             const legendTitle = document.getElementById('g-legend').value.trim() || 'Legend';
@@ -995,7 +1002,7 @@
                         if (cd <= 0) {
                             clearInterval(iv);
                             rb.disabled = false;
-                            rb.textContent = activeModule === 'G' ? '📌 Generate Points' : '▶ Run Pipeline';
+                            rb.textContent = activeModule === 'G' ? '📌 Generate Points' : activeModule === 'I' ? '🗺 Generate Thesis Map' : activeModule === 'H' ? '🚀 Generate Maps' : '▶ Run Pipeline';
                             setProgress('Ready', 'You can try again now.', 0);
                         } else {
                             rb.textContent = `⏳ Wait ${cd}s…`;
