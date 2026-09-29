@@ -13,4 +13,5 @@ rasterio>=1.3,<2
 scipy>=1.10,<2
 numpy>=1.24,<3
 psycopg2-binary>=2.9,<3
+sqlalchemy>=2.0,<3
 bcrypt>=4.0,<6

@@ -6,6 +6,7 @@ venv/
 .venv/
 .env
 *.log
+.secret_key
 
 # Flask / GIS outputs (large + user data — never push)
 uploads/

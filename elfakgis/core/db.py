@@ -216,6 +216,18 @@ def _ensure_tables() -> bool:
     if ok2 is None:
         return False
     _exec("CREATE INDEX IF NOT EXISTS gis_runs_user_idx ON gis_runs (username, id DESC)")
+    ok3 = _exec(
+        """
+        CREATE TABLE IF NOT EXISTS gis_remember (
+            username    VARCHAR(100) PRIMARY KEY,
+            token_hash  TEXT NOT NULL,
+            expires_at  TIMESTAMP NOT NULL DEFAULT NOW() + INTERVAL '30 days',
+            created_at  TIMESTAMP DEFAULT NOW()
+        )
+        """
+    )
+    if ok3 is None:
+        return False
     for table, column in _GIS_USERNAME_COLUMNS:
         if not _ensure_username_length(table, column):
             return False
@@ -307,3 +319,71 @@ def get_runs(username: str, limit: int = 100) -> Optional[List[dict]]:
         ]
     except Exception:
         return None
+
+
+# ── Stay-signed-in tokens ────────────────────────────────────────
+# One random token per user (sha256 at rest, 30-day sliding expiry) backs the
+# long-lived HttpOnly cookie. Survives restarts/deploys via shared Postgres;
+# every function fails soft (None/False) so auth degrades to plain login.
+
+import hashlib as _hashlib
+import secrets as _secrets
+
+REMEMBER_DAYS = 30
+
+
+def remember_issue(username: str) -> Optional[str]:
+    """Create (or rotate) a stay-signed-in token. Returns the raw token."""
+    if not username or not _ensure_tables():
+        return None
+    raw = _secrets.token_hex(32)
+    digest = _hashlib.sha256(raw.encode()).hexdigest()
+    ok = _exec(
+        """
+        INSERT INTO gis_remember (username, token_hash, expires_at)
+        VALUES (:u, :h, NOW() + INTERVAL '30 days')
+        ON CONFLICT (username) DO UPDATE SET
+            token_hash = EXCLUDED.token_hash,
+            expires_at = EXCLUDED.expires_at,
+            created_at = NOW()
+        """,
+        {"u": username, "h": digest},
+    )
+    return raw if ok is not None else None
+
+
+def remember_who(raw: str) -> Optional[str]:
+    """Validate a presented token → username (renews sliding expiry)."""
+    if not raw or not _ensure_tables():
+        return None
+    digest = _hashlib.sha256(raw.encode()).hexdigest()
+    row = _exec(
+        "SELECT username FROM gis_remember "
+        "WHERE token_hash = :h AND expires_at > NOW() LIMIT 1",
+        {"h": digest},
+    )
+    if row is None:
+        return None
+    try:
+        username = row.first()[0]
+    except Exception:
+        return None
+    if not username:
+        return None
+    _exec(
+        "UPDATE gis_remember SET expires_at = NOW() + INTERVAL '30 days' "
+        "WHERE username = :u",
+        {"u": username},
+    )
+    _exec("DELETE FROM gis_remember WHERE expires_at <= NOW()")
+    return username
+
+
+def remember_revoke(username: str) -> None:
+    """Drop a user's stay-signed-in token (logout). Never raises."""
+    if not username:
+        return
+    try:
+        _exec("DELETE FROM gis_remember WHERE username = :u", {"u": username})
+    except Exception:
+        pass

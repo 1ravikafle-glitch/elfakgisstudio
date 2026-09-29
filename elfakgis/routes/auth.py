@@ -35,6 +35,30 @@ def _establish_session(username):
     return runs
 
 
+REMEMBER_COOKIE = "elfak_rem"
+REMEMBER_MAX_AGE = 30 * 24 * 3600
+
+
+def _remember_cookie_args():
+    return {
+        "max_age": REMEMBER_MAX_AGE,
+        "httponly": True,
+        "samesite": "Lax",
+        "secure": os.environ.get("HTTPS", "0") == "1",
+    }
+
+
+def _issue_remember(resp, username):
+    """Attach (or refresh) the stay-signed-in cookie. Never breaks login."""
+    try:
+        from elfakgis.core import db as _db
+        raw = _db.remember_issue(username)
+        if raw:
+            resp.set_cookie(REMEMBER_COOKIE, raw, **_remember_cookie_args())
+    except Exception as e:
+        log.warning("remember-me issue failed (%s)", e)
+
+
 @auth_bp.route("/login", methods=["POST"])
 def login():
     """
@@ -74,13 +98,15 @@ def login():
     is_new = not _runs_for(username) and not _lu().get(username)
     log.info("Login: %r from %s", username, _get_client_ip())
 
-    return jsonify({
+    resp = jsonify({
         "ok": True,
         "username": username,
         "runs": runs[-20:],
         "is_new": is_new,
         "message": f"Welcome back, {username}!",
     })
+    _issue_remember(resp, username)
+    return resp
 
 
 @auth_bp.route("/sso/exchange", methods=["GET", "POST"])
@@ -158,14 +184,42 @@ def _sso_fallback_page():
 </div></body></html>"""
 
 
+@auth_bp.route("/remember", methods=["POST"])
+def remember():
+    """Silent re-login from the stay-signed-in cookie.
+
+    Used on page load when the Flask session is gone (restart/deploy/expiry)
+    but the long-lived cookie is still valid. 401 → show the login form."""
+    raw = request.cookies.get(REMEMBER_COOKIE, "")
+    username = None
+    if raw:
+        try:
+            from elfakgis.core import db as _db
+            username = _db.remember_who(raw.strip())
+        except Exception as e:
+            log.warning("remember-me lookup failed (%s)", e)
+    if not username:
+        return jsonify({"error": "No stay-signed-in session."}), 401
+    runs = _establish_session(username)
+    log.info("Remember-me sign-in: %r from %s", username, _get_client_ip())
+    return jsonify({"username": username, "runs": runs[-20:]})
+
+
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
     username = session.get("username")
     _logout_user(username)
+    try:
+        from elfakgis.core import db as _db
+        _db.remember_revoke(username)
+    except Exception as e:
+        log.warning("remember-me revoke failed (%s)", e)
     session.clear()
+    resp = jsonify({"ok": True})
+    resp.delete_cookie(REMEMBER_COOKIE)
     if username:
         log.info("Logout: %r from %s", username, _get_client_ip())
-    return jsonify({"ok": True})
+    return resp
 
 
 @auth_bp.route("/me")

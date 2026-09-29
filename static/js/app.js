@@ -3172,6 +3172,16 @@
                     return;
                 }
             } catch {}
+            // Flask session gone (restart/deploy/expiry) but the stay-
+            // signed-in cookie may still be valid — try it silently before
+            // showing the login form (no overlay flash either way).
+            try {
+                const r = await fetchJSON(`${BASE}/remember`, { method: 'POST' });
+                if (r.username) {
+                    onLoginSuccess(r.username, r.runs || [], false);
+                    return;
+                }
+            } catch {}
             document.getElementById('login-overlay').style.display = 'flex';
             setTimeout(() => document.getElementById('login-inp').focus(), 400);
         })();

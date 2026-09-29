@@ -12,6 +12,37 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
 
 
+def _stable_secret_key():
+    """Flask signing key that survives restarts: env → disk file → random.
+
+    A random-per-boot key invalidates every login on each restart (Render
+    free sleeps). For permanent stability set SECRET_KEY in the host env."""
+    env = (os.environ.get("SECRET_KEY") or "").strip()
+    if env:
+        return env
+    try:
+        path = os.path.join(_ROOT, ".secret_key")
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8") as f:
+                saved = f.read().strip()
+            if len(saved) >= 32:
+                return saved
+        fresh = secrets.token_hex(32)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(fresh)
+        try:
+            os.chmod(path, 0o600)
+        except Exception:
+            pass
+        log.warning("SECRET_KEY not set — generated and saved to .secret_key "
+                    "(set SECRET_KEY in the host env for multi-instance stability)")
+        return fresh
+    except Exception as e:
+        log.warning("SECRET_KEY not set and not savable (%s) — sessions "
+                    "won't survive restarts", e)
+        return secrets.token_hex(32)
+
+
 def create_app():
     """Build the Flask app. Imports only light modules; GIS loads per-request."""
     logging.basicConfig(
@@ -22,9 +53,7 @@ def create_app():
     app = Flask(__name__,
                 template_folder=os.path.join(_ROOT, 'templates'),
                 static_folder=os.path.join(_ROOT, 'static'))
-    app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
-    if not os.environ.get("SECRET_KEY"):
-        log.warning("SECRET_KEY not set in environment — using random key (sessions won't persist across restarts)")
+    app.secret_key = _stable_secret_key()
 
     app.config.update(
         SESSION_COOKIE_SECURE    = os.environ.get("HTTPS","0") == "1",
