@@ -27,10 +27,15 @@ from flask import Blueprint
 auth_bp = Blueprint('auth_bp', __name__)
 
 
-def _establish_session(username):
-    """Put a verified username into the Flask session and return its history."""
+def _establish_session(username, load_runs=True):
+    """Put a verified username into the Flask session.
+
+    load_runs=False skips the Postgres round-trip (hot paths: /me is hit on
+    every page load; runs backfill async via /history instead)."""
     session["username"] = username
     session.permanent = True
+    if not load_runs:
+        return []
     runs = _runs_for(username)
     return runs
 
@@ -209,9 +214,9 @@ def remember():
             log.warning("remember-me lookup failed (%s)", e)
     if not username:
         return jsonify({"username": None, "runs": []})
-    runs = _establish_session(username)
+    runs = _establish_session(username, load_runs=False)
     log.info("Remember-me sign-in: %r from %s", username, _get_client_ip())
-    return jsonify({"username": username, "runs": runs[-20:]})
+    return jsonify({"username": username, "runs": runs})
 
 
 @auth_bp.route("/logout", methods=["POST"])
@@ -235,11 +240,11 @@ def logout():
 def me():
     # 200-with-empty (not 401): probed on every page load, and a missing
     # session is the normal logged-out state — not an error worth logging
-    # to the browser console on each visit.
+    # to the browser console on each visit. Runs backfill via /history.
     u = _require_login()
     if not u:
         return jsonify({"username": None, "runs": []})
-    return jsonify({"username": u, "runs": _runs_for(u)[-20:]})
+    return jsonify({"username": u, "runs": []})
 
 
 @auth_bp.route("/history")

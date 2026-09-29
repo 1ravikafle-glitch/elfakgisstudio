@@ -3123,6 +3123,14 @@
             }, 100);
             document.getElementById('uavatar').textContent = username.charAt(0).toUpperCase();
             renderHistory(runs);
+            // /me + /remember answer without the DB round-trip (fast login);
+            // backfill the run list quietly right after.
+            setTimeout(async () => {
+                try {
+                    const h = await fetchJSON(`${BASE}/history`);
+                    if (h && h.runs) renderHistory(h.runs);
+                } catch {}
+            }, 400);
             // Fire-and-forget: pull the small optional libs + dropdown data
             // one file at a time so everything feels instant afterwards.
             try { _warmup(); } catch (_) {}
