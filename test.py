@@ -1272,3 +1272,36 @@ def test_module_c_still_generates_plots_for_a_usable_boundary():
     import os
     for ext in ("shp", "dbf", "prj"):
         assert os.path.exists(os.path.join(out, f"b_point.{ext}"))
+
+
+def test_pyproject_declares_an_explicit_build_system_and_package_discovery():
+    """Adding a [project] table silently made this repo look installable.
+
+    Render then tried to build it as a distribution and failed on setuptools
+    flat-layout auto-discovery:
+
+        error: Multiple top-level packages discovered in a flat-layout:
+        ['data', 'static', 'uploads', 'outputs', 'elfakgis',
+         'templates', 'dem_catalog'].
+
+    GitHub CI never caught it because it installs from requirements.txt only,
+    so the failure surfaced solely at deploy time. Pin both keys so the build
+    works no matter which command runs.
+    """
+    import tomllib
+    import pathlib
+
+    cfg = tomllib.loads((pathlib.Path(__file__).parent / "pyproject.toml").read_text())
+
+    build = cfg.get("build-system", {})
+    assert build.get("build-backend"), "pyproject.toml has no build-backend"
+    assert build.get("requires"), "pyproject.toml has no build-system requires"
+
+    find = cfg.get("tool", {}).get("setuptools", {}).get("packages", {}).get("find", {})
+    assert find.get("include"), "package discovery is not pinned; flat-layout auto-discovery will fail"
+
+    # Runtime deps must have exactly one home, or the two resolutions drift.
+    assert "dependencies" not in cfg.get("project", {}), (
+        "runtime deps are duplicated from requirements.txt into pyproject.toml"
+    )
+    assert (pathlib.Path(__file__).parent / "requirements.txt").exists()

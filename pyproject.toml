@@ -4,32 +4,31 @@ version = "1.0.0"
 description = "Professional web GIS for Nepal forestry: boundary mapping, slope analysis, compartment subdivision, survey points."
 requires-python = ">=3.9"
 
-# Runtime dependencies live in requirements.txt because Render builds from it
-# directly. They are duplicated here only as ranges so tooling knows what the
-# project needs; requirements.txt remains the single source of truth for the
-# deployed build.
-dependencies = [
-    "flask>=2.3,<4",
-    "gunicorn>=21,<24",
-    "pandas>=2.0,<3",
-    "geopandas>=0.14,<2",
-    "shapely>=2.0,<3",
-    "matplotlib>=3.7,<4",
-    "openpyxl>=3.1,<4",
-    "fiona>=1.9,<2",
-    "xlrd>=2.0,<3",
-    "pyproj>=3.6,<4",
-    "rtree>=1.0,<2",
-    "rasterio>=1.3,<2",
-    "scipy>=1.10,<2",
-    "numpy>=1.24,<3",
-    "psycopg2-binary>=2.9,<3",
-    "sqlalchemy>=2.0,<3",
-    "bcrypt>=4.0,<6",
-]
+# No `dependencies` here on purpose. requirements.txt is the single source of
+# truth for runtime deps — Render installs from it directly. Declaring the list
+# in both places let `pip install .` resolve a different set than the deployed
+# build, which is how the two drifted apart.
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "ruff>=0.5"]
+
+[build-system]
+# Required because a [project] table makes this repo look like an installable
+# distribution. With no explicit backend or package list, setuptools falls back
+# to flat-layout auto-discovery and refuses to build:
+#
+#   error: Multiple top-level packages discovered in a flat-layout:
+#   ['data', 'static', 'uploads', 'outputs', 'elfakgis', 'templates', 'dem_catalog'].
+#
+# That listing is just this directory, not a packaging mistake — it is a Flask
+# app, not a library. So discovery is pinned to the one importable package.
+
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["elfakgis*"]
+exclude = ["data*", "static*", "uploads*", "outputs*", "dem_catalog*", "docs*", "scripts*", "venv*"]
 
 [tool.pytest.ini_options]
 testpaths = ["test.py"]
