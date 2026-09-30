@@ -1300,11 +1300,18 @@ def test_pyproject_declares_an_explicit_build_system_and_package_discovery():
     find = cfg.get("tool", {}).get("setuptools", {}).get("packages", {}).get("find", {})
     assert find.get("include"), "package discovery is not pinned; flat-layout auto-discovery will fail"
 
-    # Runtime deps must have exactly one home, or the two resolutions drift.
-    assert "dependencies" not in cfg.get("project", {}), (
-        "runtime deps are duplicated from requirements.txt into pyproject.toml"
+    # Runtime deps exist in both files because Render may install from either,
+    # and `pip install .` installs nothing unless [project] declares them.
+    # What must not happen is the two lists disagreeing.
+    root = pathlib.Path(__file__).parent
+    reqs = [ln.strip() for ln in (root / "requirements.txt").read_text().splitlines()
+            if ln.strip() and not ln.startswith(("#", "-"))]
+    declared = cfg.get("project", {}).get("dependencies", [])
+    assert sorted(declared) == sorted(reqs), (
+        "pyproject.toml dependencies have drifted from requirements.txt:\n"
+        f"  only in pyproject: {sorted(set(declared) - set(reqs))}\n"
+        f"  only in requirements: {sorted(set(reqs) - set(declared))}"
     )
-    assert (pathlib.Path(__file__).parent / "requirements.txt").exists()
 
 
 def test_a_repaired_multipolygon_boundary_does_not_crash_module_c():
