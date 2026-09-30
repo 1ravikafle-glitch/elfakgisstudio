@@ -74,6 +74,28 @@ def _safe_dn(s): return str(s).strip().replace("/","_").replace("\\","_").replac
 # Geometry helpers
 def safe_polygon(coords):
     p = Polygon(coords); return p if p.is_valid else p.buffer(0)
+
+
+def exterior_lines(geom):
+    """Exterior ring(s) of a Polygon or MultiPolygon, as a list of LineStrings.
+
+    safe_polygon() repairs a self-intersecting ring with buffer(0), which
+    returns a MultiPolygon when the repair splits the ring into separate
+    parts. Hand-digitized boundaries self-intersect constantly, so that is a
+    routine input, not an edge case — and MultiPolygon has no .exterior, so
+    reaching for it directly raises AttributeError.
+    """
+    parts = getattr(geom, "geoms", None)
+    if parts is None:
+        parts = [geom]
+    out = []
+    for part in parts:
+        if part.is_empty or part.geom_type != "Polygon":
+            continue
+        out.append(LineString(part.exterior.coords))
+    return out
+
+
 _GEOM_TOL_FRAC = 1e-6   # fraction of orig area that counts as "leak"
 
 

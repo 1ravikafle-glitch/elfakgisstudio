@@ -1305,3 +1305,76 @@ def test_pyproject_declares_an_explicit_build_system_and_package_discovery():
         "runtime deps are duplicated from requirements.txt into pyproject.toml"
     )
     assert (pathlib.Path(__file__).parent / "requirements.txt").exists()
+
+
+def test_a_repaired_multipolygon_boundary_does_not_crash_module_c():
+    """safe_polygon() repairs a self-intersecting ring with buffer(0), which
+    returns a MultiPolygon when the repair splits the ring in two. Group C
+    then reached for `.exterior` on it — MultiPolygon has no `.exterior` — so
+    the run died with a bare AttributeError.
+
+    Self-intersection is the normal case for hand-digitized boundaries, so this
+    is routine input rather than an edge case.
+    """
+    import io
+    import tempfile
+    from elfakgis.geo.geom import safe_polygon, exterior_lines
+
+    # A row-major X/Y sequence: self-intersecting, and repairs to 2 parts.
+    coords = [(f * 8000, o * 8000) for f in range(3) for o in range(5)]
+    repaired = safe_polygon(coords + [coords[0]])
+    assert repaired.geom_type == "MultiPolygon", "repro no longer reproduces"
+    assert not hasattr(repaired, "exterior"), "MultiPolygon unexpectedly has .exterior"
+
+    # Every exterior ring comes back, one LineString per part.
+    lines = exterior_lines(repaired)
+    assert len(lines) == 2, f"expected one line per part, got {len(lines)}"
+    assert all(ln.geom_type == "LineString" for ln in lines)
+    assert len(exterior_lines(__import__("shapely").Polygon([(0, 0), (1, 0), (1, 1)]))) == 1
+
+    # And the module runs to completion on that boundary.
+    from elfakgis.groups.group_c import group_c
+
+    class _F(io.BytesIO):
+        filename = "b.csv"
+
+    csv = ("X,Y\n" + "\n".join(f"{x},{y}" for x, y in coords)).encode()
+    poly, line, pts = group_c(_F(csv), "EPSG:32644", 4000, 4000, 12, 12,
+                              tempfile.mkdtemp(), "A", {}, "b", "r1")
+    assert len(line) == 2, "one line feature per polygon part expected"
+    assert len(pts) > 0
+
+
+def test_procfile_is_configured_for_a_512mb_free_tier_instance():
+    """Render's free tier gives 0.1 CPU / 512 MB. These are load-bearing.
+
+    Measured on a 3.5M-cell DEM (dem_catalog/PALPA_44N.tif), full extent as
+    the boundary so nothing is cropped away:
+
+        app import floor          172 MB
+        one module H job          341 MB peak
+        two concurrent            470 MB peak  -> 42 MB headroom, OOM-kill
+
+    So: one worker (two would pay the 172 MB import floor twice), and one
+    pipeline at a time. Serialising costs little — at 0.1 CPU two genuinely
+    parallel heavy GIS jobs were never going to be fast — and it moves the
+    worst case from "killed by the OOM reaper" back to ~170 MB of headroom.
+    """
+    import pathlib
+    import re
+
+    procfile = (pathlib.Path(__file__).parent / "Procfile").read_text().strip()
+    web = procfile.split("web:", 1)[1]
+
+    workers = int(re.search(r"--workers\s+(\d+)", web).group(1))
+    assert workers == 1, (
+        f"{workers} workers pay the ~172 MB import floor {workers} times "
+        "and will not fit in 512 MB"
+    )
+
+    # MAX_PIPELINES gates the GIS work; MAX_BG_JOBS gates the daemon threads
+    # that run it. Either alone leaves the other at its own default.
+    for var in ("MAX_PIPELINES", "MAX_BG_JOBS"):
+        m = re.search(rf"{var}=(\d+)", web)
+        assert m, f"{var} is unset, so the semaphore falls back to its default"
+        assert int(m.group(1)) == 1, f"{var}={m.group(1)} will exceed 512 MB"

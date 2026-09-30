@@ -6,7 +6,7 @@ from functools import wraps
 from datetime import datetime
 
 log = logging.getLogger("elfakgis")
-from elfakgis.geo.geom import _enforce_poly_gdf, gdf_from_records, normalize_order, read_input, safe_col, safe_polygon
+from elfakgis.geo.geom import _enforce_poly_gdf, exterior_lines, gdf_from_records, normalize_order, read_input, safe_col, safe_polygon
 
 import numpy as np
 import pandas as pd
@@ -147,7 +147,8 @@ def group_c(file, crs, w, h, rows, cols, out, mode, mapping=None, base_name="bou
 
     # Build GeoDataFrames
     p_gdf = gpd.GeoDataFrame([{"geometry": p} for p in polygons], crs=crs)
-    l_gdf = gpd.GeoDataFrame([{"geometry": LineString(p.exterior.coords)} for p in polygons], crs=crs)
+    l_gdf = gdf_from_records(
+        [{"geometry": ln} for p in polygons for ln in exterior_lines(p)], crs, ["geometry"])
 
     # Union for point‑in‑polygon tests
     union = p_gdf.unary_union
