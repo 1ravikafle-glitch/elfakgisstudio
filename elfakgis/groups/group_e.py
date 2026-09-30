@@ -9,7 +9,7 @@ from elfakgis.geo.geom import _force_valid, _close_poly, _as_poly, _repair
 log = logging.getLogger("elfakgis")
 from elfakgis.core.config import UPLOAD
 from elfakgis.core.store import _prog
-from elfakgis.geo.geom import _GEOM_TOL_FRAC, _enforce_poly_gdf, _safe_dn, normalize_order, safe_col
+from elfakgis.geo.geom import _GEOM_TOL_FRAC, _enforce_poly_gdf, _safe_dn, gdf_from_records, normalize_order, safe_col
 
 import numpy as np
 import pandas as pd
@@ -900,9 +900,9 @@ def _save_compartments(pieces, fname, crs, save_dir):
             "Area_ha": ah, "Pct_Area": pct, "geometry": p.centroid,
         })
 
-    pg  = gpd.GeoDataFrame(poly_recs, crs=crs)
-    lg  = gpd.GeoDataFrame(line_recs, crs=crs)
-    ptg = gpd.GeoDataFrame(pt_recs,   crs=crs)
+    pg  = gdf_from_records(poly_recs, crs)
+    lg  = gdf_from_records(line_recs, crs, ["geometry"])
+    ptg = gdf_from_records(pt_recs,   crs)
 
     pg  = _enforce_poly_gdf(pg)
     pfx = _safe_dn(fname)

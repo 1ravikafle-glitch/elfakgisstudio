@@ -6,7 +6,7 @@ from functools import wraps
 from datetime import datetime
 
 log = logging.getLogger("elfakgis")
-from elfakgis.geo.geom import _enforce_poly_gdf, _safe_dn, normalize_order, safe_col, safe_polygon
+from elfakgis.geo.geom import _enforce_poly_gdf, _safe_dn, gdf_from_records, normalize_order, safe_col, safe_polygon
 
 import numpy as np
 import pandas as pd
@@ -31,7 +31,7 @@ def _save_fl(pr,lr,pts,d,crs):
     _pdf=_enforce_poly_gdf(gpd.GeoDataFrame([pr],crs=crs))
     if not _pdf.empty: _pdf.to_file(os.path.join(d,f"{pfx}_polygon.shp"))
     gpd.GeoDataFrame([lr],crs=crs).to_file(os.path.join(d,f"{pfx}_line.shp"))
-    gpd.GeoDataFrame(pts,crs=crs).to_file(os.path.join(d,f"{pfx}_point.shp"))
+    gdf_from_records(pts,crs).to_file(os.path.join(d,f"{pfx}_point.shp"))
 
 def group_d(df, crs, out, mapping=None, mode="A"):
     df=normalize_order(df)
@@ -66,7 +66,9 @@ def group_d(df, crs, out, mapping=None, mode="A"):
             ptl=[{"Forest":f,"Order":r[oc] if oc else None,"geometry":Point(r[xc],r[yc])} for _,r in fg.iterrows()]
             _save_fl(pr,lr,ptl,fd,crs); ap.append(pr); al.append(lr); apt.extend(ptl)
     if not ap: raise ValueError("No valid polygons built.")
-    return gpd.GeoDataFrame(ap,crs=crs),gpd.GeoDataFrame(al,crs=crs),gpd.GeoDataFrame(apt,crs=crs)
+    return (gdf_from_records(ap,crs,["Forest","Order","geometry"]),
+            gdf_from_records(al,crs,["geometry"]),
+            gdf_from_records(apt,crs,["Forest","Order","geometry"]))
 
 # ----------------------------------------------------------------------
 

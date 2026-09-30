@@ -1206,3 +1206,69 @@ def test_the_map_modal_is_a_real_dialog():
     assert "function closeMapModal" in app_js, "the modal has no named close path"
     assert "Skip to main content" in html, "no skip link — keyboard users tab the whole header"
     assert 'role="main"' in html, "the workspace is not a main landmark"
+
+
+# ── Geometry construction ─────────────────────────────────────────────────
+
+def test_an_empty_record_list_still_yields_a_typed_frame_with_its_crs():
+    """gpd.GeoDataFrame([], crs=...) raises a geopandas internal error.
+
+    "Assigning CRS to a GeoDataFrame without a geometry column is not
+    supported" says nothing about the user's data, and it fires exactly when
+    a result set comes back legitimately empty — which every caller already
+    guards for with its own "is it empty?" check. Those checks could never
+    run, because construction blew up first.
+    """
+    import geopandas as gpd
+    with pytest.raises(ValueError, match="without a geometry column"):
+        gpd.GeoDataFrame([], crs="EPSG:32644")
+
+    from elfakgis.geo.geom import gdf_from_records
+    empty = gdf_from_records([], "EPSG:32644")
+    assert empty.empty
+    assert str(empty.crs) == "EPSG:32644", "an empty result lost its CRS"
+    assert empty.geometry.name == "geometry", "an empty result has no active geometry"
+    # ...and the non-empty path is unchanged
+    filled = gdf_from_records([{"SN": 1, "X": 1.0, "Y": 2.0,
+                                "geometry": __import__("shapely").Point(1, 2)}],
+                             "EPSG:32644")
+    assert len(filled) == 1 and str(filled.crs) == "EPSG:32644"
+
+
+def test_module_c_explains_an_empty_sample_grid_in_words():
+    """A user whose grid finds no centre inside the boundary needs a sentence,
+    not a geopandas stack trace."""
+    import io
+    from elfakgis.groups.group_c import group_c
+
+    class _F(io.BytesIO):
+        filename = "boundary.csv"
+
+    # Five collinear-ish points make a sliver too thin for a 2x2 grid.
+    csv = b"SN,X,Y\n1,500000,4000000\n2,500010,4000010\n3,500020,4000020\n4,500030,4000005\n5,500040,4000015\n"
+    with pytest.raises(ValueError) as exc:
+        group_c(_F(csv), "EPSG:32644", 4, 4, 2, 2, "/tmp", "A", {},
+                base_name="t", run_id="r1")
+    msg = str(exc.value)
+    assert "geometry column" not in msg, "still leaking the geopandas internal error"
+    assert "inside the boundary" in msg, f"unhelpful message: {msg}"
+
+
+def test_module_c_still_generates_plots_for_a_usable_boundary():
+    """Guard the fix: the happy path must not regress into always erroring."""
+    import io
+    import tempfile
+    from elfakgis.groups.group_c import group_c
+
+    class _F(io.BytesIO):
+        filename = "boundary.csv"
+
+    csv = b"SN,X,Y\n1,0,0\n2,10000,0\n3,10000,10000\n4,0,10000\n"
+    out = tempfile.mkdtemp()
+    poly, line, pts = group_c(_F(csv), "EPSG:32644", 2500, 2500, 4, 4, out, "A", {},
+                              base_name="b", run_id="r1")
+    assert len(pts) == 16, f"expected a 4x4 grid of plots, got {len(pts)}"
+    assert str(pts.crs) == "EPSG:32644"
+    import os
+    for ext in ("shp", "dbf", "prj"):
+        assert os.path.exists(os.path.join(out, f"b_point.{ext}"))

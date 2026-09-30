@@ -6,7 +6,7 @@ from functools import wraps
 from datetime import datetime
 
 log = logging.getLogger("elfakgis")
-from elfakgis.geo.geom import _enforce_poly_gdf, normalize_order, read_input, safe_col, safe_polygon
+from elfakgis.geo.geom import _enforce_poly_gdf, gdf_from_records, normalize_order, read_input, safe_col, safe_polygon
 
 import numpy as np
 import pandas as pd
@@ -162,7 +162,15 @@ def group_c(file, crs, w, h, rows, cols, out, mode, mapping=None, base_name="bou
                 pts.append({"SN": sn, "X": center.x, "Y": center.y, "geometry": center})
                 sn += 1
 
-    pt_gdf = gpd.GeoDataFrame(pts, crs=crs)
+    if not pts:
+        raise ValueError(
+            "No sample-grid centre fell inside the boundary, so no plots "
+            "could be generated. The boundary is probably far too small for "
+            f"a {rows}x{cols} grid — try fewer rows/columns, or a larger "
+            "boundary."
+        )
+
+    pt_gdf = gdf_from_records(pts, crs)
 
     # Save outputs
     p_gdf = _enforce_poly_gdf(p_gdf)

@@ -6,7 +6,7 @@ from functools import wraps
 from datetime import datetime
 
 log = logging.getLogger("elfakgis")
-from elfakgis.geo.geom import _enforce_poly_gdf, normalize_order, safe_col, safe_polygon
+from elfakgis.geo.geom import _enforce_poly_gdf, gdf_from_records, normalize_order, safe_col, safe_polygon
 
 import numpy as np
 import pandas as pd
@@ -46,7 +46,9 @@ def group_b(df, crs, out, mapping=None):
             lines.append({"Forest":f,"Compartment":c,"geometry":LineString(coords)})
             for _,r in cg.iterrows():
                 pts.append({"Forest":f,"Compartment":c,"Order":r[oc] if oc else None,"geometry":Point(r[xc],r[yc])})
-    p=gpd.GeoDataFrame(polys,crs=crs); l=gpd.GeoDataFrame(lines,crs=crs); pt=gpd.GeoDataFrame(pts,crs=crs)
+    p=gdf_from_records(polys,crs,["Forest","Compartment","Order","Area_ha","geometry"])
+    l=gdf_from_records(lines,crs,["geometry"])
+    pt=gdf_from_records(pts,crs,["Forest","Compartment","Order","geometry"])
     p=_enforce_poly_gdf(p)
     if not p.empty: p.to_file(os.path.join(out,"forest_polygon.shp"))
     if not l.empty: l.to_file(os.path.join(out,"forest_line.shp"))

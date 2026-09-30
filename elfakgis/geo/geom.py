@@ -17,6 +17,29 @@ log = logging.getLogger("elfakgis")
 # ----------------------------------------------------------------------
 
 def _norm(s): return "".join(c for c in str(s).lower() if c.isalnum())
+
+# Columns every frame built by gdf_from_records carries, so an empty result
+# still has a geometry column and a readable CRS.
+_PT_COLS = ["SN", "X", "Y", "geometry"]
+_POLY_COLS = ["Forest", "Area_ha", "Perim_m", "geometry"]
+
+
+def gdf_from_records(records, crs, columns=None):
+    """Build a GeoDataFrame from a list of dicts, tolerating an empty list.
+
+    ``gpd.GeoDataFrame([], crs=...)`` raises "Assigning CRS to a GeoDataFrame
+    without a geometry column is not supported" — an internal geopandas
+    complaint that a user whose sample grid simply found no point inside the
+    boundary has no way to interpret. This keeps the empty case as a real,
+    empty, correctly-typed frame so the caller's own "is it empty?" check can
+    report the problem in words.
+
+    Non-empty input behaves exactly as before.
+    """
+    if records:
+        return gpd.GeoDataFrame(records, geometry="geometry", crs=crs)
+    cols = list(columns) if columns else _PT_COLS
+    return gpd.GeoDataFrame(columns=cols, geometry="geometry", crs=crs)
 _XA={"x","xcoord","xcoordinate","xcord","east","easting","eastings","lon","long","longitude","lng","pointx","coordx","utme","utmx"}
 _YA={"y","ycoord","ycoordinate","ycord","north","northing","northings","lat","latitude","pointy","coordy","utmn","utmy"}
 _OA={"order","id","sn","sno","serial","serialno","seq","sequence","index","rowid","fid","no","num","number","plotid","plotno","pointid","pointno","pid"}
