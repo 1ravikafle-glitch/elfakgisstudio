@@ -280,6 +280,80 @@ def _login_required(fn):
             return jsonify({"error": "Authentication required. Please log in."}), 401
         return fn(*args, **kwargs)
     return wrapper
+
+
+# ── Run ownership ───────────────────────────────────────────────────
+# Every run-scoped route (map data, GeoJSON, compose, save, download,
+# output files, progress) must answer one question first: does this
+# run belong to the caller? Run ids are human-readable and therefore
+# guessable — "FOREST_20260705_122945_056b" has only 16 bits of entropy
+# in its suffix — so without this check any visitor could read, and via
+# /save_edit overwrite, any other user's forestry data by walking ids.
+#
+# Ownership is claimed the moment a job is accepted rather than when it
+# finishes, because the client starts polling /progress immediately. A run
+# whose job failed is still owned, and still not readable by anyone else.
+_OWNERS: dict = {}
+_OWNERS_LOCK = threading.Lock()
+
+
+def _claim_run(rid, uname):
+    """Record that `uname` owns `rid` from this moment on."""
+    if not rid or not uname:
+        return
+    with _OWNERS_LOCK:
+        _OWNERS[rid] = uname
+        if len(_OWNERS) > 5000:
+            # Bound the map the same way progress is bounded; the oldest
+            # half is dropped, and the DB check below remains authoritative.
+            for k in list(_OWNERS)[: len(_OWNERS) // 2]:
+                _OWNERS.pop(k, None)
+
+
+def _run_owner(rid):
+    """Username that owns `rid`, or None. DB first so it survives restarts."""
+    if not rid:
+        return None
+    try:
+        from elfakgis.core import db as _db
+        who = _db.find_run_owner(rid)
+        if who:
+            return who
+    except Exception as e:
+        log.warning("Run-owner lookup unavailable (%s); using local claim", e)
+    with _OWNERS_LOCK:
+        return _OWNERS.get(rid)
+
+
+def _owns_run(rid, uname=None):
+    """True when `uname` owns `rid`.
+
+    Fails closed: an unknown run is owned by nobody, so a signed-in user
+    cannot read a run that was never claimed. `uname` defaults to the
+    current session.
+    """
+    uname = uname if uname is not None else _require_login()
+    if not uname or not rid:
+        return False
+    return _run_owner(rid) == uname
+
+
+def _forget_run(rid):
+    with _OWNERS_LOCK:
+        _OWNERS.pop(rid, None)
+
+
+def _owns_run_or_404(rid, uname=None):
+    """Abort 404 unless the caller owns the run.
+
+    404 rather than 403 on purpose: a 403 confirms the run id exists,
+    which is exactly the enumeration oracle this check exists to remove.
+    """
+    if not _owns_run(rid, uname):
+        log.warning("Ownership denied: %r asked for run %r", uname, rid)
+        abort(404, "Run not found.")
+    return True
+
 # META HELPER & MAP EDITOR ROUTE
 # ----------------------------------------------------------------------
 

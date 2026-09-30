@@ -1,19 +1,37 @@
     /* ── v3: every dashboard section resizable (right / bottom / corner handles) ── */
     (function(){
-        const KEY = 'elfak-dock-v1';
+        // Widths are shared with dock.js (both write them into elfak-dock-v1),
+        // so that write merges. Heights are owned exclusively here — dock.js
+        // used to overwrite the whole key and silently destroy them.
+        const LAYOUT_KEY = 'elfak-dock-v1';
+        const HEIGHT_KEY = 'elfak-dock-heights-v1';
         const main = document.querySelector('.main');
         if (!main) return;
         const isMobile = () => window.innerWidth <= 1100;
         const sections = () => [...main.querySelectorAll(':scope > .dock-section')];
+        const readJson = k => { try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch (_) { return {}; } };
+        const writeJson = (k, obj) => { try { localStorage.setItem(k, JSON.stringify(obj)); } catch (_) {} };
         const store = {
-            load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (_) { return {}; } },
-            save(patch) { try { localStorage.setItem(KEY, JSON.stringify({ ...this.load(), ...patch })); } catch (_) {} }
+            loadHeights() {
+                const cur = readJson(HEIGHT_KEY).heights;
+                if (cur) return cur;
+                // One-time migration: heights used to live inside the shared
+                // layout key. Adopt them so existing layouts keep their
+                // section heights instead of silently snapping back.
+                const legacy = readJson(LAYOUT_KEY).heights;
+                if (legacy) { writeJson(HEIGHT_KEY, { heights: legacy }); return legacy; }
+                return null;
+            },
+            save(widths, heights) {
+                writeJson(LAYOUT_KEY, { ...readJson(LAYOUT_KEY), widths });
+                writeJson(HEIGHT_KEY, { heights });
+            }
         };
         function applyHeights() {
             if (isMobile()) return;
-            const st = store.load();
-            if (st.heights) sections().forEach(s => {
-                const h = st.heights[s.dataset.dock];
+            const heights = store.loadHeights();
+            if (heights) sections().forEach(s => {
+                const h = heights[s.dataset.dock];
                 if (h) s.style.height = h + 'px';
             });
         }
@@ -66,7 +84,7 @@
                         widths[s.dataset.dock] = +(s.getBoundingClientRect().width / (main.clientWidth || 1) * 100).toFixed(2);
                         if (s.style.height) heights[s.dataset.dock] = Math.round(parseFloat(s.style.height));
                     });
-                    store.save({ widths, heights });
+                    store.save(widths, heights);
                 };
                 handle.addEventListener('pointermove', move);
                 handle.addEventListener('pointerup', up);

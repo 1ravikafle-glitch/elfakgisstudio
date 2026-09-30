@@ -36,7 +36,44 @@ from elfakgis.core import db
 
 log = logging.getLogger("elfakgis")
 
-# Only used when the shared database is unavailable.
+# ── How credentials may be verified when the shared database is down ──
+#
+# The tiers are tried in order:
+#   1. the shared Postgres accounts table (the intended design)
+#   2. THIS service, which auto-registers on first sign-in
+#
+# Tier 2 is not a credential check. It creates an account from whatever
+# username and password arrive, then reports success. Treating that as
+# "the password is correct" means /login hands a working session to anyone
+# who can reach it. It is also not self-defending: the first attempt mints
+# the account, so a *second* attempt with the same invented credentials
+# looks like a returning user and passes any "did this account exist?" gate.
+#
+# So the fallback is opt-in and off by default. With neither the database
+# nor the fallback configured, verification fails closed and /login answers
+# 503. That is the correct failure mode: locked out, rather than open.
+#
+# Set AUTH_SHARED_FALLBACK=api to re-enable the Forestry check (accepting
+# that anyone who can reach /login can register), and additionally
+# ALLOW_SELF_REGISTRATION=1 to let those freshly created accounts sign in.
+_SHARED_FALLBACK = (os.environ.get("AUTH_SHARED_FALLBACK", "none").strip().lower())
+_SELF_REGISTRATION_ALLOWED = (
+    os.environ.get("ALLOW_SELF_REGISTRATION", "0").strip().lower()
+    in ("1", "true", "yes", "on")
+)
+
+
+def fallback_enabled() -> bool:
+    """Whether the auto-registering Forestry API may be consulted."""
+    return _SHARED_FALLBACK in ("api", "forestry", "on", "1", "true", "yes")
+
+
+def self_registration_allowed() -> bool:
+    """Whether an account the fallback just created may sign in."""
+    return _SELF_REGISTRATION_ALLOWED
+
+
+# Used when the shared database is unavailable *and* the fallback is enabled.
 FORESTRY_AUTH_URL = (
     os.environ.get("FORESTRY_AUTH_URL")
     or "https://forestry-pscpreparation.onrender.com/auth/login"
@@ -54,12 +91,14 @@ SSO_AUDIENCE_ALIASES = frozenset({
     "elfakgisprostudio",
 })
 
-# Optional ceiling on how long a handoff token may claim to be valid.
-# 0 (the default) means no cap, for compatibility with siblings that mint
-# long-lived tokens. See docs/SINGLE-SIGN-ON.md: a token in a URL is a
-# bearer credential that anyone with the link can replay, so the
-# recommended value is a few minutes.
-SSO_MAX_TTL = int(os.environ.get("SSO_MAX_TTL", "0") or 0)
+# Ceiling on how long a handoff token may claim to be valid. The default is
+# 5 minutes rather than 0 (unlimited): a token in a URL is a bearer
+# credential that anyone holding the link can replay, and a long-lived one
+# leaks through browser history, proxy logs and Referer headers for as long
+# as it is valid. A handoff is a redirect that happens immediately, so five
+# minutes is generous; set SSO_MAX_TTL=0 only to restore unlimited lifetime
+# for a sibling that genuinely mints long-lived tokens.
+SSO_MAX_TTL = int(os.environ.get("SSO_MAX_TTL", "300") or 0)
 
 
 # ── Password verification ─────────────────────────────────────────
@@ -92,12 +131,26 @@ def _bcrypt_hash(password: str) -> Optional[str]:
         return None
 
 
-def _verify_via_forestry_api(username: str, password: str) -> Optional[bool]:
-    """Ask the Forestry PSC service to check the credentials. None = unreachable."""
+def _verify_via_forestry_api(username: str, password: str) -> Tuple[Optional[bool], bool]:
+    """Ask the Forestry PSC service to check the credentials.
+
+    Returns ``(verdict, is_new)`` where verdict is True/False/None
+    (True = good password, False = rejected, None = unreachable) and
+    ``is_new`` says whether Forestry *created* the account as part of this
+    request.
+
+    That second value matters. Forestry auto-registers on first sign-in, so
+    a 200 does not prove the account existed — it may mean "welcome, I just
+    made you an account for any password you typed". A studio that treats
+    that as proof of authentication is, in effect, open to anyone who can
+    reach /login.
+    """
+    if not username or not password:
+        return False, False
     try:
         import urllib.request
     except Exception:
-        return None
+        return None, False
     payload = json.dumps({"username": username, "password": password}).encode("utf-8")
     req = urllib.request.Request(
         FORESTRY_AUTH_URL,
@@ -108,17 +161,26 @@ def _verify_via_forestry_api(username: str, password: str) -> Optional[bool]:
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             if resp.status == 200:
-                return True
+                is_new = False
+                try:
+                    body = json.loads(resp.read(65536) or b"{}")
+                    if isinstance(body, dict):
+                        is_new = bool(body.get("is_new"))
+                except Exception:
+                    # An unreadable body is not a reason to reject a
+                    # password the service just accepted; assume existing.
+                    pass
+                return True, is_new
             if resp.status in (400, 401, 403):
-                return False
-            return None
+                return False, False
+            return None, False
     except Exception as exc:
         # 401/403 arrive as HTTPError; anything else is a real outage.
         code = getattr(exc, "code", None)
         if code in (400, 401, 403):
-            return False
+            return False, False
         log.warning("Forestry auth unreachable (%s); cannot verify %r", exc, username)
-        return None
+        return None, False
 
 
 def verify_credentials(username: str, password: str) -> Tuple[bool, str]:
@@ -126,7 +188,9 @@ def verify_credentials(username: str, password: str) -> Tuple[bool, str]:
     Verify a username/password pair.
 
     Returns ``(ok, reason)`` where reason is a short machine-readable tag:
-    ``ok``, ``invalid`` or ``unavailable``.
+    ``ok`` (known account, correct password), ``new`` (Forestry just
+    auto-created the account from this attempt), ``invalid`` or
+    ``unavailable``.
     """
     username = (username or "").strip()
     if not username or not password:
@@ -148,16 +212,51 @@ def verify_credentials(username: str, password: str) -> Tuple[bool, str]:
             # Remember it so the next sign-in skips the lookup entirely.
             if stored.startswith("$2"):
                 db.cache_hash(username, stored)
+            else:
+                # Legacy plaintext account that just signed in successfully.
+                # Upgrade it now, while we hold the plaintext: this is the
+                # only moment the real password is available to hash. The
+                # shared `users` table is owned by Forestry PSC, so only the
+                # local cache is rewritten here — Forestry performs the same
+                # upgrade on its side.
+                fresh = _bcrypt_hash(password)
+                if fresh and db.available():
+                    db.cache_hash(username, fresh)
+                    log.info("Upgraded a legacy plaintext account to bcrypt: %r", username)
             return True, "ok"
         if verdict is False:
             return False, "invalid"
 
-    # 3) Forestry PSC API
-    verdict = _verify_via_forestry_api(username, password)
+    # 3) Forestry PSC API — opt-in only, see the note on _SHARED_FALLBACK.
+    #    This tier registers unknown accounts, so it is not evidence of a
+    #    correct password; it is off unless a deployment asks for it.
+    if not fallback_enabled():
+        # Distinguish "we asked and the user isn't there" from "we couldn't
+        # ask". With the database reachable and no `users` row, the account
+        # genuinely does not exist and the honest answer is a rejected login.
+        # Reporting that as "unavailable" would turn every mistyped username
+        # into an HTTP 503 and tell a real user the site is broken.
+        if db.available():
+            return False, "invalid"
+        log.warning(
+            "Cannot verify %r: no shared database and the Forestry API "
+            "fallback is disabled (AUTH_SHARED_FALLBACK=none). Failing closed.",
+            username,
+        )
+        return False, "unavailable"
+
+    verdict, is_new = _verify_via_forestry_api(username, password)
     if verdict is True:
         fresh = _bcrypt_hash(password)
         if fresh and db.available():
             db.cache_hash(username, fresh)
+        if is_new:
+            # Forestry just minted this account from whatever password was
+            # typed. It is a real login, but it is NOT evidence that the
+            # visitor knows a pre-existing secret, so it is reported
+            # distinctly and the route decides whether to admit it.
+            log.warning("Account auto-created by Forestry on first sign-in: %r", username)
+            return True, "new"
         return True, "ok"
     if verdict is False:
         return False, "invalid"

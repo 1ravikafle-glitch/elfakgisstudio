@@ -18,7 +18,9 @@ from elfakgis.core.config import *
 from elfakgis.core.store import (_prog, _PROG, _PROG_LOCK, _save_run_meta, _append_run,
     _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user,
     _runs_for, _delete_run, _clear_runs)
-from elfakgis.core.security import (_safe_filename, _safe_path, _get_client_ip, _rate_limit)
+from elfakgis.core.security import (_safe_filename, _safe_path, _get_client_ip, _rate_limit,
+    login_guard)
+from elfakgis.core.csrf import csrf_protect
 from elfakgis.core.pipeline import _with_pipeline_sem
 from elfakgis.core import autshared
 from elfakgis.geo.kmz import _generate_run_id, _safe_runid
@@ -43,13 +45,35 @@ def _establish_session(username, load_runs=True):
 REMEMBER_COOKIE = "elfak_rem"
 REMEMBER_MAX_AGE = 30 * 24 * 3600
 
+# Read through autshared so the route and the verification chain can never
+# disagree about the policy. See elfakgis/core/autshared.py for why the
+# fallback is off by default.
+_SELF_REGISTRATION_ALLOWED = autshared.self_registration_allowed()
+_FALLBACK_ENABLED = autshared.fallback_enabled()
+
 
 def _remember_cookie_args():
+    """Flags for the stay-signed-in cookie.
+
+    This is a 30-day bearer credential — the token alone is enough to become
+    that user — so `secure` is not optional. It used to be read from
+    `HTTPS=1`, an environment variable Render never sets, which meant the
+    cookie was issued without the Secure flag in production and would have
+    been replayed by anything that saw plain HTTP.
+
+    Taken from app.config so the session cookie and this one cannot drift
+    apart; the factory already resolves it from the TLS-terminating proxy.
+    """
+    try:
+        from flask import current_app
+        secure = bool(current_app.config.get("SESSION_COOKIE_SECURE", False))
+    except Exception:
+        secure = os.environ.get("HTTPS", "0") == "1"
     return {
         "max_age": REMEMBER_MAX_AGE,
         "httponly": True,
         "samesite": "Lax",
-        "secure": os.environ.get("HTTPS", "0") == "1",
+        "secure": secure,
     }
 
 
@@ -65,6 +89,8 @@ def _issue_remember(resp, username):
 
 
 @auth_bp.route("/login", methods=["POST"])
+@_rate_limit(limit=20, window=60)
+@login_guard
 def login():
     """
     Sign in with a Forestry PSC account.
@@ -98,6 +124,20 @@ def login():
             }), 503
         log.info("Rejected sign-in for %r from %s", username, ip)
         return jsonify({"error": "Invalid username or password."}), 401
+
+    # reason == "new" means Forestry created this account from the password
+    # that was just typed. Admitting it is what turns /login into
+    # "anyone may register", so it needs to be asked for explicitly.
+    if reason == "new" and not _SELF_REGISTRATION_ALLOWED:
+        log.warning("Refused a self-registered account (%r from %s): "
+                    "ALLOW_SELF_REGISTRATION is off", username, _get_client_ip())
+        return jsonify({
+            "error": "This account does not exist yet. Please create it in "
+                     "Forestry PSC Preparation first, then sign in here."
+        }), 403
+    if reason == "new":
+        log.warning("Admitted a self-registered account (%r from %s): "
+                    "ALLOW_SELF_REGISTRATION is on", username, _get_client_ip())
 
     runs = _establish_session(username)
     # Truthful "new" flag: first GIS sign-in ever (tracked), NOT "has no
@@ -143,6 +183,7 @@ def _already_signed_in():
 
 
 @auth_bp.route("/sso/exchange", methods=["GET", "POST"])
+@_rate_limit(limit=30, window=60)
 def sso_exchange():
     """
     Single sign-on handoff from Forestry PSC.
@@ -230,6 +271,7 @@ def _sso_fallback_page():
 
 
 @auth_bp.route("/remember", methods=["POST"])
+@_rate_limit(limit=30, window=60)
 def remember():
     """Silent re-login from the stay-signed-in cookie.
 
@@ -253,6 +295,7 @@ def remember():
 
 
 @auth_bp.route("/logout", methods=["POST"])
+@csrf_protect
 def logout():
     username = session.get("username")
     _logout_user(username)
@@ -304,6 +347,7 @@ def _purge_run_output(rid):
 
 @auth_bp.route("/history/<run_id>", methods=["DELETE"])
 @_login_required
+@csrf_protect
 @_rate_limit(limit=60, window=60)
 def history_delete(run_id):
     """Delete one run from the signed-in user's history (record + files)."""
@@ -324,6 +368,7 @@ def history_delete(run_id):
 
 @auth_bp.route("/history", methods=["DELETE"])
 @_login_required
+@csrf_protect
 @_rate_limit(limit=10, window=60)
 def history_clear():
     """Delete the signed-in user's entire run history."""
@@ -353,6 +398,11 @@ def auth_capabilities():
         "sso": autshared.sso_enabled(),
         "shared_database": db_status.get("available", False),
         "db_reason": db_status.get("reason", "unknown"),
+        # Sign-in fails closed unless the shared database can verify, or the
+        # deployment explicitly opts into the auto-registering fallback.
+        "fallback_enabled": _FALLBACK_ENABLED,
+        # False means accounts must exist before they may sign in.
+        "self_registration": _SELF_REGISTRATION_ALLOWED,
     })
 
 

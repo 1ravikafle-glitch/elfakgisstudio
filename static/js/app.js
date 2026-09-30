@@ -5,8 +5,23 @@
 
         const BASE = window.location.origin;
 
+        // ── CSRF ──────────────────────────────────────────────────────
+        // The server requires X-CSRF-Token on every state-changing request.
+        // Read once from the meta tag the template rendered; the token is
+        // per-session, so a hard refresh picks up a new one transparently.
+        const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+        const CSRF_SAFE = new Set(['GET', 'HEAD', 'OPTIONS', 'TRACE']);
+
         // ── robust JSON fetch wrapper ──
         async function fetchJSON(url, options = {}) {
+            // Attach the CSRF header to unsafe verbs. Done here, at the one
+            // place every call already funnels through, so no individual
+            // call site can forget it.
+            const method = (options.method || 'GET').toUpperCase();
+            if (!CSRF_SAFE.has(method) && CSRF_TOKEN) {
+                options.headers = Object.assign({}, options.headers || {},
+                                               { 'X-CSRF-Token': CSRF_TOKEN });
+            }
             const res = await fetch(url, options);
             if (!res.ok) {
                 // The session can die mid-use (expired, redeployed). The app
@@ -37,11 +52,37 @@
         // Heavy libs are NOT in <head> anymore. Each file below is well under
         // 2MB and loads alone, on first use — or sequentially in the background
         // right after login (_warmup). Cached by the browser afterwards.
+        //
+        // `sri` is a Subresource Integrity hash: the browser refuses to execute
+        // these bytes unless they hash to exactly this value. Without it, a
+        // compromised CDN, a bad Wi-Fi hop, or anything that can answer for
+        // unpkg.com/cdnjs.cloudflare.com gets to run JavaScript in this
+        // origin, next to the signed-in session. These files parse
+        // user-supplied spreadsheets and images, so that is a real path to
+        // data theft, not a theoretical one.
+        //
+        // `crossOrigin` is mandatory, not decorative: SRI on a cross-origin
+        // script only works when the request is made in CORS mode, and
+        // without the attribute the browser silently skips the integrity
+        // check. prefetch.js already fetches with mode:'cors', so the warmed
+        // response and this request share one cache entry.
         const VENDOR = {
-            jszip: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
-            xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-            html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-            geoman: 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js'
+            jszip: {
+                url: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+                sri: 'sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG'
+            },
+            xlsx: {
+                url: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+                sri: 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw'
+            },
+            html2canvas: {
+                url: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+                sri: 'sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H'
+            },
+            geoman: {
+                url: 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js',
+                sri: 'sha384-ld2Q6oJGnECCjh+LLDcIWiAxD4lZGgdYvhwDcp4Uhw23A8VSqQcD7YOoNHdwPjQc'
+            }
         };
         const _vendorP = {};
         function _vendorReady(name) {
@@ -54,9 +95,14 @@
         function ensureVendor(name) {
             if (_vendorReady(name)) return Promise.resolve();
             if (_vendorP[name]) return _vendorP[name];
+            const spec = VENDOR[name];
+            if (!spec) return Promise.reject(new Error('Unknown library: ' + name));
             _vendorP[name] = new Promise((resolve, reject) => {
                 const s = document.createElement('script');
-                s.src = VENDOR[name];
+                s.src = spec.url;
+                s.integrity = spec.sri;
+                s.crossOrigin = 'anonymous';
+                s.referrerPolicy = 'no-referrer';
                 s.async = true;
                 const to = setTimeout(() => reject(new Error(name + ' load timed out')), 30000);
                 s.onload = () => { clearTimeout(to); resolve(); };
@@ -2610,6 +2656,14 @@
         }
 
         // ── Full View ──
+        function closeMapModal() {
+            const modal = document.getElementById('map-modal');
+            if (!modal) return;
+            modal.style.display = 'none';
+            // Return focus to the control that opened it.
+            (document.getElementById('view-full-btn') || document.activeElement)?.focus?.();
+        }
+
         async function viewFullMap() {
             const modal = document.getElementById('map-modal');
             const mimg = document.getElementById('modal-img');
@@ -2624,6 +2678,7 @@
 
             mimg.src = '';
             modal.style.display = 'flex';
+            modal.querySelector('.modal-close')?.focus();
 
             const fallbackToRaw = () => {
                 const src = document.getElementById('out-img')?.src;
@@ -2947,7 +3002,9 @@
             try {
                 const response = await fetch(`${BASE}/export_layout`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    // Not fetchJSON: this one needs the raw blob, not JSON.
+                    // So the CSRF header has to be attached by hand.
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
                     body: JSON.stringify({
                         run_id: runId,
                         layout_state: layoutState,
@@ -3016,7 +3073,22 @@
             const isOpen = panel.classList.toggle('mobile-open');
             bg.classList.toggle('show', isOpen);
             btn.classList.toggle('open', isOpen);
+            btn.setAttribute('aria-expanded', String(isOpen));
+            if (isOpen) panel.querySelector('.nav-item')?.focus();
+            else btn.focus();
         }
+
+        // Escape closes whichever overlay is open, newest-first. Without this
+        // a keyboard user could open a drawer and have no way out but clicking.
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            const modal = document.getElementById('map-modal');
+            if (modal && modal.style.display !== 'none') { closeMapModal(); return; }
+            const drawer = document.getElementById('hist-drawer');
+            if (drawer && drawer.classList.contains('open')) { toggleHist(); return; }
+            const panel = document.getElementById('left-nav-panel');
+            if (panel && panel.classList.contains('mobile-open')) { toggleMobileNav(); return; }
+        });
         document.addEventListener('click', (e) => {
             if (e.target.closest('.nav-item') && window.innerWidth <= 1100) {
                 const panel = document.getElementById('left-nav-panel');
@@ -3099,10 +3171,17 @@
             const open = d.classList.contains('open');
             d.classList.toggle('open', !open);
             bg.style.display = open ? 'none' : 'block';
+            d.setAttribute('aria-hidden', String(open));
             if (!open) {
+                // Move focus in on open so the keyboard lands inside the dialog
+                // rather than continuing to tab through the page behind it.
+                d.querySelector('.close-drawer')?.focus();
                 fetchJSON(`${BASE}/history`)
                     .then(d => { if (d && d.runs) renderHistory(d.runs); })
                     .catch(() => {});
+            } else {
+                // ...and hand it back to the trigger on close.
+                document.getElementById('user-bar')?.querySelector('button')?.focus();
             }
         }
         const MICONS = { A: '🌲', B: '🌲', C: '📍', D: '🗂', E: '✂️', F: '🏔', G: '📌', H: '🌲' };

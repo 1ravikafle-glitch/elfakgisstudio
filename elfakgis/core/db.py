@@ -361,6 +361,31 @@ def get_runs(username: str, limit: int = 100) -> Optional[List[dict]]:
         return None
 
 
+def find_run_owner(run_id: str) -> Optional[str]:
+    """
+    Username that owns ``run_id``, or None.
+
+    This is the authoritative ownership answer for every run-scoped route.
+    Returning None (no database, or the run is simply not there) means the
+    caller owns nothing, and the route answers 404 — fail closed, so an
+    unconfigured database can never turn into "everyone may read
+    everything".
+    """
+    if not run_id or not _ensure_tables():
+        return None
+    rows = _exec(
+        "SELECT username FROM gis_runs WHERE run_id = :r ORDER BY id DESC LIMIT 1",
+        {"r": run_id},
+    )
+    if rows is None:
+        return None
+    try:
+        row = rows.fetchone()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+
 def delete_run(username: str, run_id: str) -> Optional[bool]:
     """
     Delete one run record owned by ``username``.

@@ -46,7 +46,7 @@ def generate_kmz(poly_gdf, line_gdf, pts_gdf, out_dir, run_id):
             return None
         try:
             return gdf.to_crs("EPSG:4326") if gdf.crs else None
-        except:
+        except Exception:
             return None
 
     pw = w84(poly_gdf)

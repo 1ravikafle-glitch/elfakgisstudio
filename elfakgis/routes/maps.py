@@ -8,8 +8,10 @@ from flask import (Flask, request, jsonify, send_file, send_from_directory,
                    render_template, session, Response, stream_with_context, abort, g)
 from elfakgis.core.config import *
 from elfakgis.core.store import (_prog, _PROG, _PROG_LOCK, _save_run_meta, _append_run,
-    _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user)
+    _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user,
+    _owns_run, _owns_run_or_404, _claim_run, _forget_run)
 from elfakgis.core.security import _rate_limit, _cool_down, _safe_filename, _safe_path, _validate_username, _get_client_ip
+from elfakgis.core.csrf import csrf_protect
 from elfakgis.core.pipeline import _with_pipeline_sem
 from elfakgis.geo.kmz import _generate_run_id, _safe_runid
 
@@ -18,12 +20,18 @@ log = logging.getLogger("elfakgis")
 from flask import Blueprint
 maps_bp = Blueprint('maps_bp', __name__)
 @maps_bp.route("/progress/<run_id>")
+@_login_required
+@_rate_limit(limit=300, window=60)
 def progress_stream(run_id):
     from elfakgis.core.store import _prog_replay
     try:
         run_id = _safe_runid(run_id)
-    except:
-        pass
+    except Exception:
+        abort(404, "Run not found.")
+    # The stream is opened the moment a job is accepted, so the run must
+    # already be claimed — otherwise a leaked/guessed id would let anyone
+    # watch another user's forest being processed.
+    _owns_run_or_404(run_id)
     def gen():
         # Replay persisted events first (survives worker restarts), then
         # live-tail memory. Dedup by value: replay already merges both.
@@ -54,7 +62,7 @@ def progress_stream(run_id):
                 try:
                     if json.loads(msgs[-1]).get("pct", 0) >= 100:
                         return
-                except:
+                except Exception:
                     pass
             else:
                 now = time.time()
@@ -74,6 +82,8 @@ def progress_stream(run_id):
     )
 
 @maps_bp.route("/result/<run_id>")
+@_login_required
+@_rate_limit(limit=300, window=60)
 def job_result(run_id):
     """Poll the final payload of a background pipeline job.
 
@@ -84,6 +94,10 @@ def job_result(run_id):
     try:
         run_id = _safe_runid(run_id)
     except Exception:
+        return jsonify({"done": False, "boot": BOOT_ID}), 200
+    # Unknown run: nothing to leak, so the honest answer is the same
+    # "not finished" payload a fresh worker gives.
+    if not _owns_run(run_id):
         return jsonify({"done": False, "boot": BOOT_ID}), 200
     r = _bg_get(run_id)
     if r:
@@ -106,9 +120,12 @@ def job_result(run_id):
     return jsonify({"done": False, "boot": BOOT_ID}), 200
 
 @maps_bp.route("/geojson/<run_id>")
+@_login_required
+@_rate_limit(limit=120, window=60)
 def get_geojson(run_id):
     from elfakgis.core.config import OUTPUT
     run_id = _safe_runid(run_id)
+    _owns_run_or_404(run_id)
     folder = _safe_path(OUTPUT, run_id)
     if not os.path.exists(folder):
         return jsonify({"type": "FeatureCollection", "features": []}), 200
@@ -137,16 +154,20 @@ def get_geojson(run_id):
                      "Easting","Northing","geometry")]
             g = g[[c for c in keep if c in g.columns]]
             gdfs.append(g)
-        except: pass
+        except Exception: pass
     if not gdfs:
         return jsonify({"type": "FeatureCollection", "features": []}), 200
     combined = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True), crs="EPSG:4326")
     return Response(combined.to_json(), mimetype="application/json")
 
 @maps_bp.route("/compose/<run_id>", methods=["POST"])
+@_login_required
+@csrf_protect
+@_rate_limit(limit=30, window=60)
 def compose_map(run_id):
     from elfakgis.core.config import OUTPUT
     run_id = _safe_runid(run_id)
+    _owns_run_or_404(run_id)
     folder = os.path.join(OUTPUT, run_id)
     if not os.path.exists(folder):
         return jsonify({"error": "Run not found"}), 404
@@ -299,12 +320,15 @@ def _parse_legend_labels(raw):
 
 
 @maps_bp.route("/map_texts/<run_id>")
+@_login_required
+@_rate_limit(limit=120, window=60)
 def map_texts(run_id):
     """Return every editable text currently on the run's map: title,
     subtitle, area line, legend title and one entry per legend row.
     Powers the Composer's per-row editing (blank = keep auto)."""
     from elfakgis.core.config import OUTPUT
     run_id = _safe_runid(run_id)
+    _owns_run_or_404(run_id)
     folder = os.path.join(OUTPUT, run_id)
     if not os.path.exists(folder):
         return jsonify({"error": "Run not found"}), 404
@@ -384,11 +408,15 @@ def map_texts(run_id):
 
 
 @maps_bp.route("/export_layout", methods=["POST"])
+@_login_required
+@csrf_protect
+@_rate_limit(limit=20, window=60)
 def export_layout():
     """Re-render the A4 map with user-edited text and return it as download."""
     from elfakgis.core.config import OUTPUT
     data = request.get_json(silent=True) or {}
     run_id = _safe_runid(data.get("run_id", ""))
+    _owns_run_or_404(run_id)
     folder = os.path.join(OUTPUT, run_id)
     if not os.path.exists(folder):
         return jsonify({"error": "Run not found"}), 404
@@ -437,9 +465,15 @@ def export_layout():
     except Exception as e:
         return jsonify({"error": f"Export error: {e}"}), 500
 @maps_bp.route("/save_edit/<run_id>", methods=["POST"])
+@_login_required
+@csrf_protect
+@_rate_limit(limit=30, window=60)
 def save_edit(run_id):
     from elfakgis.core.config import OUTPUT
     run_id = _safe_runid(run_id)
+    # This one *writes*. Without the check any visitor could rewrite
+    # another user's map labels and export.
+    _owns_run_or_404(run_id)
     folder = os.path.join(OUTPUT, run_id)
     if not os.path.exists(folder):
         return jsonify({"error": "Run not found"}), 404
@@ -469,7 +503,7 @@ def save_edit(run_id):
                 g0 = gpd.read_file(poly_shps[0])
                 if g0.crs:
                     orig_crs = str(g0.crs)
-            except:
+            except Exception:
                 pass
 
         # Reproject to original CRS
@@ -578,21 +612,32 @@ def save_edit(run_id):
         return jsonify({"error": f"Edit error: {e}\n{traceback.format_exc()}"}), 500
 
 @maps_bp.route("/download/<run_id>")
+@_login_required
+@_rate_limit(limit=20, window=60)
 def download(run_id):
     from elfakgis.core.config import OUTPUT
     run_id = _safe_runid(run_id)
-    folder = os.path.join(OUTPUT, run_id)
-    if not os.path.exists(folder):
+    _owns_run_or_404(run_id)
+    folder = _safe_path(OUTPUT, run_id)
+    if not os.path.isdir(folder):
         return jsonify({"error": "Run not found"}), 404
-    zip_path = os.path.join(folder, "..", f"{run_id}.zip")
-    shutil.make_archive(folder, "zip", folder)
-    return send_file(zip_path, as_attachment=True)
+    # make_archive derives the .zip path from the directory, so the real
+    # artefact lands beside the run dir and is served as a download.
+    zip_base = os.path.join(os.path.dirname(folder), run_id)
+    archive = shutil.make_archive(zip_base, "zip", folder)
+    return send_file(archive, as_attachment=True, download_name=f"{run_id}.zip")
 
 @maps_bp.route("/outputs/<run_id>/<path:filename>")
+@_login_required
+@_rate_limit(limit=300, window=60)
 def serve_output(run_id, filename):
     from elfakgis.core.config import OUTPUT
-    folder = os.path.join(OUTPUT, run_id)
-    if not os.path.exists(os.path.join(folder, filename)):
+    run_id = _safe_runid(run_id)
+    _owns_run_or_404(run_id)
+    # realpath the base *before* joining so "..%2f.." cannot escape, and
+    # let send_from_directory do the final containment check.
+    folder = os.path.realpath(os.path.join(OUTPUT, run_id))
+    if not os.path.isfile(os.path.join(folder, filename)):
         return jsonify({"error": "File not found"}), 404
     return send_from_directory(folder, filename)
 

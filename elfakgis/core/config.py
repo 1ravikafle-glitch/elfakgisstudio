@@ -27,6 +27,56 @@ def _project_root():
 
 _PROJECT_ROOT = _project_root()
 
+
+def load_dotenv(path=None, override=False):
+    """Load ``KEY=VALUE`` lines from ``.env`` into ``os.environ``.
+
+    Written by hand rather than pulled in as a dependency: this is the only
+    thing ``.env`` is for, and the app already refuses to run in production
+    without ``SECRET_KEY``, so a package that is a single import would not
+    earn its place in the image.
+
+    Two details that are easy to get wrong and were worth the code:
+
+    * **Quotes are stripped.** A Neon/Postgres URL ends in ``&sslmode=...``,
+      and an unquoted value is truncated at the first ``&`` by anything that
+      sources the file in a shell. Quoting is what keeps the whole URL.
+    * **Existing variables win.** ``override=False`` means a real deployment
+      environment (Render, Docker, CI) always beats the file, so a stray
+      ``.env`` can never silently repoint production at a laptop's database.
+
+    Returns the keys that were set.
+    """
+    path = path or os.path.join(_PROJECT_ROOT, ".env")
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            raw = fh.read()
+    except OSError:
+        return []
+
+    set_keys = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):].lstrip()
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            continue
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+            value = value[1:-1]
+        if not override and key in os.environ:
+            continue
+        os.environ[key] = value
+        set_keys.append(key)
+    if set_keys:
+        log.info("Loaded %d value(s) from .env: %s",
+                 len(set_keys), ", ".join(sorted(set_keys)))
+    return set_keys
+
 UPLOAD = os.path.join(_PROJECT_ROOT, "uploads")
 OUTPUT = os.path.join(_PROJECT_ROOT, "outputs")
 USERS_FILE = os.path.join(_PROJECT_ROOT, "users.json")
@@ -50,6 +100,16 @@ NEPAL_BASE_SHP = os.path.join(NEPAL_DIR, "local_unit.shp")
 NEPAL_PROVINCES_SHP = os.path.join(NEPAL_DIR, "provinces.shp")
 NEPAL_DISTRICTS_SHP = os.path.join(NEPAL_DIR, "districts.shp")
 NEPAL_WARDS_SHP = os.path.join(NEPAL_DIR, "NEPAL_WARDS.shp")  # legacy
+
+# ── Upload ceiling ─────────────────────────────────────────────────
+# The old value was 2 GB on a 512 MB free-tier instance: a handful of
+# concurrent uploads OOM-killed the process, which on Render means a boot
+# loop and every signed-in user signed out. Forestry inputs are survey
+# sheets and DEM tiles, so 200 MB is generous and still survivable. The
+# per-file on-disk check in core.security is the authoritative guard; this
+# is the transport-level backstop that stops the body being buffered at all.
+UPLOAD_MAX_BYTES = int(os.environ.get("MAX_UPLOAD_MB", "200")) * 1024 * 1024
+
 for _d in (UPLOAD, OUTPUT, DEM_CATALOG_DIR, DEM_CACHE_DIR):
     os.makedirs(_d, exist_ok=True)
 

@@ -16,55 +16,74 @@
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)" />
+    <!-- CSRF token for every state-changing request. Read once by the
+         fetchJSON() wrapper in app.js and sent back as X-CSRF-Token. -->
+    <meta name="csrf-token" content="{{ csrf_token }}" />
     <script type="application/ld+json">
         { "@context": "https://schema.org", "@type": "WebApplication", "name": "Elfak GIS Studio", "alternateName": ["elfakgis", "elfakgisstudio"], "url": "https://elfakgisstudio.onrender.com/", "description": "Professional web-based GIS for forest boundary mapping, slope analysis, compartment subdivision and survey point generation.", "applicationCategory": "GIS Software", "operatingSystem": "Web Browser", "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" } }
     </script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.css" />
+    <!-- Third-party map libraries. Every one carries an integrity hash: the
+         browser refuses to execute or apply bytes that do not match, so a
+         compromised CDN or anything able to answer for unpkg.com cannot run
+         script in this origin next to the signed-in session. crossorigin is
+         required for the check to apply at all on a cross-origin resource. -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H"
+          crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH"
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.css"
+          integrity="sha384-kFHJXoxnyoGXzCN/jBWXbLGVLIsjMOz3OflpKpSJorRSOY++lYGPt8VoHurVr94q"
+          crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Heavy optional libs (xlsx ~0.9MB, geoman ~0.3MB, html2canvas ~0.2MB,
          jszip ~0.1MB) load on demand, one file at a time (each well under
          2MB), via ensureVendor() in app.js: instantly on first use, or
          quietly in the background right after login. -->
-    <!-- Fonts: Inter only, the face Forestry PSC uses for headings and body
-         (weights 400/500/600/700/800; the 500 step is used by controls).
-         Fraunces was dropped when the display face moved to Inter, which
-         removes a whole font family from the critical path.
-         Non-blocking (media=print swap) + display=swap so text paints
-         instantly in system fonts, then upgrades. -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" /></noscript>
+    <!-- Fonts: Inter, served from this origin (static/css/fonts.css). It used
+         to come from fonts.googleapis.com, which the Content-Security-Policy
+         does not allow — so the request was blocked and the whole UI silently
+         fell back to a system font. Self-hosting fixes that, removes a
+         third-party connection from the critical path, and lets the policy
+         stay strict. One variable file covers weights 400-800. -->
+    <link rel="preload" as="font" type="font/woff2" href="/static/fonts/inter-latin.woff2" crossorigin />
+    <link rel="stylesheet" href="/static/css/fonts.css?v=20260930-1" />
     <link rel="preconnect" href="https://unpkg.com" crossorigin />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Leaflet is needed for the map on the first screen, so it is
-         preloaded rather than waiting for the deferred script to run. -->
-    <link rel="preload" as="script" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin />
+         preloaded rather than waiting for the deferred script to run. The
+         preconnect above opens the connection and this pulls the bytes; the
+         integrity and crossorigin must match the script tag exactly, or the
+         browser treats them as two different resources and downloads
+         Leaflet twice. -->
+    <link rel="preload" as="script" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH"
+          crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="preload" as="script" href="/static/js/prefetch.js?v=20260929-2" />
-    <link rel="stylesheet" href="/static/css/app.css?v=20260929-2" />
+    <link rel="stylesheet" href="/static/css/app.css?v=20260930-1" />
     <link rel="stylesheet" href="/static/css/forestry.css?v=20260929-9" />
     <link rel="stylesheet" href="/static/css/motion.css?v=20260929-2" />
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div id="theme-flash"></div>
 
     <!-- HISTORY DRAWER -->
-    <div id="hist-drawer">
+    <div id="hist-drawer" role="dialog" aria-modal="true" aria-label="Run history" aria-hidden="true">
         <div class="drawer-hd">
             <div class="drawer-title">📋 Run History</div>
             <button class="drawer-clear" id="hist-clear" onclick="clearHistory()" hidden>🗑 Clear all</button>
             <button class="close-drawer" onclick="toggleHist()" aria-label="Close history">✕</button>
         </div>
-        <div class="drawer-body" id="hist-body"><div style="text-align:center;color:var(--muted);font-size:11px;padding:40px 20px;font-family:var(--mono)">No runs yet.</div></div>
+        <div class="drawer-body" id="hist-body"><div class="empty-msg">No runs yet.</div></div>
     </div>
-    <div id="hist-bg" onclick="toggleHist()"></div>
+    <div id="hist-bg" aria-hidden="true" onclick="toggleHist()"></div>
 
     <div class="shell">
 
         <!-- HEADER -->
         <header class="hdr">
-            <button id="mobile-nav-btn" class="mobile-nav-btn" onclick="toggleMobileNav()" aria-label="Menu">
+            <button id="mobile-nav-btn" class="mobile-nav-btn" onclick="toggleMobileNav()" aria-label="Menu" aria-expanded="false" aria-controls="left-nav-panel">
                 <span></span><span></span><span></span>
             </button>
             <div class="logo">
@@ -75,7 +94,7 @@
                 <div><div class="logo-text">Elfak GIS Studio</div><div class="logo-sub">Forest Mapping</div></div>
             </div>
             <div class="hdr-pills">
-                <div class="pill" id="engine-pill"><span class="pill-dot"></span><span id="engine-pill-txt">Engine Online</span></div>
+                <div class="pill" id="engine-pill"><span class="pill-dot" aria-hidden="true"></span><span id="engine-pill-txt" role="status" aria-live="polite">Engine Online</span></div>
                 <div class="pill">Projection: <strong id="hdr-crs" style="margin-left:4px">EPSG:32644</strong></div>
                 <div class="pill">Module: <strong id="hdr-mod" style="margin-left:4px">A · Boundary</strong></div>
             </div>
@@ -99,8 +118,8 @@
         </header>
 
         <!-- MAIN -->
-        <div class="main">
-            <div id="mobile-nav-bg" class="mobile-nav-bg" onclick="toggleMobileNav()"></div>
+        <div class="main" id="main-content" role="main">
+            <div id="mobile-nav-bg" class="mobile-nav-bg" aria-hidden="true" onclick="toggleMobileNav()"></div>
 
             <!-- LEFT NAV -->
             <div class="panel dock-section" id="left-nav-panel" data-dock="navigator">
@@ -487,12 +506,12 @@
                             <!-- Group H Gallery -->
                             <div id="h-gallery">
                                 <div class="gallery-grid">
-                                    <div><img id="h-preview-slope" style="width:100%;border-radius:6px;border:1px solid var(--border);" alt="Slope Map"></div>
-                                    <div><img id="h-preview-satellite" style="width:100%;border-radius:6px;border:1px solid var(--border);" alt="Satellite Map"></div>
-                                    <div><img id="h-preview-sub" style="width:100%;border-radius:6px;border:1px solid var(--border);" alt="Sub-compartment Map"></div>
-                                    <div><img id="h-preview-sample" style="width:100%;border-radius:6px;border:1px solid var(--border);" alt="Sample Plot Map"></div>
-                                    <div><img id="h-preview-boundary" style="width:100%;border-radius:6px;border:1px solid var(--border);" alt="Boundary Survey Point Map"></div>
-                                    <div><img id="h-preview-survey" style="width:100%;border-radius:6px;border:1px solid var(--border);" alt="Survey Point Map"></div>
+                                    <div><img id="h-preview-slope" class="gallery-thumb" alt="Slope Map" width="1500" height="1125"></div>
+                                    <div><img id="h-preview-satellite" class="gallery-thumb" alt="Satellite Map" width="1500" height="1125"></div>
+                                    <div><img id="h-preview-sub" class="gallery-thumb" alt="Sub-compartment Map" width="1500" height="1125"></div>
+                                    <div><img id="h-preview-sample" class="gallery-thumb" alt="Sample Plot Map" width="1500" height="1125"></div>
+                                    <div><img id="h-preview-boundary" class="gallery-thumb" alt="Boundary Survey Point Map" width="1500" height="1125"></div>
+                                    <div><img id="h-preview-survey" class="gallery-thumb" alt="Survey Point Map" width="1500" height="1125"></div>
                                 </div>
                                 <div class="gallery-actions">
                                     <button onclick="window.location.href='/download/'+currentRunId" class="etool primary">📦 Download ZIP</button>
@@ -547,7 +566,7 @@
                                 <div class="prog-pct" id="prog-pct">0%</div>
                             </div>
                             <div class="prog-bar-bg"><div class="prog-bar-fill" id="prog-fill"></div></div>
-                            <div class="prog-msg" id="prog-msg">Upload a file and click Run</div>
+                            <div class="prog-msg" id="prog-msg" role="status" aria-live="polite" aria-atomic="true">Upload a file and click Run</div>
                         </div>
                     </div>
                 </div>
@@ -567,7 +586,7 @@
                 <!-- PNG view -->
                 <div id="pv-static" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
                     <div class="canvas-wrap" id="canvas-wrap-static">
-                        <img id="out-img" alt="Map Output">
+                        <img id="out-img" alt="Map Output" width="2481" height="3507">
                         <div class="empty-msg" id="empty-msg">🌲 Run a pipeline to see your A4 map here.<br><br>
                             PNG · SHP · CSV · Excel</div>
 
@@ -650,16 +669,16 @@
 
                             <div id="layer-panel" class="layer-panel"></div>
                             <div id="align-toolbar" class="align-toolbar">
-                                <button class="etool" onclick="alignSelected('left')" title="Align Left">⬅</button>
-                                <button class="etool" onclick="alignSelected('center-h')" title="Center Horizontally">⟷</button>
-                                <button class="etool" onclick="alignSelected('right')" title="Align Right">➡</button>
+                                <button class="etool" onclick="alignSelected('left')" title="Align Left" aria-label="Align Left">⬅</button>
+                                <button class="etool" onclick="alignSelected('center-h')" title="Center Horizontally" aria-label="Center Horizontally">⟷</button>
+                                <button class="etool" onclick="alignSelected('right')" title="Align Right" aria-label="Align Right">➡</button>
                                 <span class="sep-dot"></span>
-                                <button class="etool" onclick="alignSelected('top')" title="Align Top">⬆</button>
-                                <button class="etool" onclick="alignSelected('center-v')" title="Center Vertically">⟷</button>
-                                <button class="etool" onclick="alignSelected('bottom')" title="Align Bottom">⬇</button>
+                                <button class="etool" onclick="alignSelected('top')" title="Align Top" aria-label="Align Top">⬆</button>
+                                <button class="etool" onclick="alignSelected('center-v')" title="Center Vertically" aria-label="Center Vertically">⟷</button>
+                                <button class="etool" onclick="alignSelected('bottom')" title="Align Bottom" aria-label="Align Bottom">⬇</button>
                                 <span class="sep-dot"></span>
-                                <button class="etool" onclick="alignSelected('distribute-h')" title="Distribute Horizontally">⊞</button>
-                                <button class="etool" onclick="alignSelected('distribute-v')" title="Distribute Vertically">⊟</button>
+                                <button class="etool" onclick="alignSelected('distribute-h')" title="Distribute Horizontally" aria-label="Distribute Horizontally">⊞</button>
+                                <button class="etool" onclick="alignSelected('distribute-v')" title="Distribute Vertically" aria-label="Distribute Vertically">⊟</button>
                             </div>
                         </div><!-- overlay-layer -->
                     </div><!-- canvas-wrap -->
@@ -784,12 +803,12 @@
                 </div>
 
                 <!-- Full-map modal -->
-                <div id="map-modal" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;flex-direction:column;gap:12px" onclick="this.style.display='none'">
+                <div id="map-modal" role="dialog" aria-modal="true" aria-label="Full map view" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;flex-direction:column;gap:12px" onclick="closeMapModal()">
                     <div style="position:relative;max-width:95vw;max-height:92vh;overflow:auto" onclick="event.stopPropagation()">
-                        <img id="modal-img" style="max-width:100%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.6);display:block">
+                        <img id="modal-img" alt="Full map output" style="max-width:100%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.6);display:block">
                     </div>
                     <div style="display:flex;gap:10px">
-                        <button onclick="document.getElementById('map-modal').style.display='none'" style="padding:8px 20px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:white;font-size:12px;cursor:pointer;font-family:var(--sans);font-weight:600">✕ Close</button>
+                        <button class="modal-close" onclick="closeMapModal()">✕ Close</button>
                         <a id="modal-dl-btn" href="#" download style="padding:8px 20px;border-radius:20px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font-size:12px;cursor:pointer;font-family:var(--sans);font-weight:600;text-decoration:none">⬇ Download PNG</a>
                     </div>
                 </div>
@@ -801,8 +820,8 @@
     <script defer src="/static/js/theme.js?v=20260929-3"></script>
     <script defer src="/static/js/prefetch.js?v=20260929-2"></script>
     <script defer src="/static/js/app.js?v=20260929-8"></script>
-    <script defer src="/static/js/dock.js?v=20260927-1"></script>
-    <script defer src="/static/js/dock-resize.js?v=20260927-1"></script>
+    <script defer src="/static/js/dock.js?v=20260930-1"></script>
+    <script defer src="/static/js/dock-resize.js?v=20260930-1"></script>
     <script defer src="/static/js/boot.js?v=20260929-1"></script>
 </body>
 </html>

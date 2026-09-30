@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A new push to the same branch cancels the run in flight — the newest commit
+# is the only one whose result matters.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest ruff
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        run: pytest test.py -v
+
+      - name: The app must still boot
+        # A suite can pass while the app is unimportable. This is the one
+        # check that catches a broken import at module scope, which is the
+        # most likely way a change to this package fails.
+        run: python -c "from app import app; print(f'booted with {len(list(app.url_map.iter_rules()))} routes')"
+
+  deps:
+    name: Dependency sanity
+    runs-on: ubuntu-latest
+    # Slow, so it runs on main only and in the background. Catches a version
+    # range that resolves to something the app cannot import.
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install exactly what Render installs
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Import the heavy GIS stack
+        # requirements.txt uses ranges. If an upstream release breaks an
+        # import, this fails here rather than on the user's next deploy.
+        run: |
+          python -c "import geopandas, rasterio, shapely, fiona, pyproj, rtree"
+          python -c "import scipy.ndimage, openpyxl, xlrd, bcrypt, sqlalchemy, psycopg2"

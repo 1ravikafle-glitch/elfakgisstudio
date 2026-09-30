@@ -38,7 +38,9 @@ except ImportError:
 # GROUP H – SAMPLE POINT BASED GIS MAPS
 # ----------------------------------------------------------------------
 
-def _validate_zip_components(zip_path, required=[".shp", ".dbf", ".shx", ".prj"]):
+def _validate_zip_components(zip_path, required=None):
+    if required is None:
+        required = [".shp", ".dbf", ".shx", ".prj"]
     with zipfile.ZipFile(zip_path, 'r') as z:
         names = z.namelist()
         missing = [ext for ext in required if not any(n.endswith(ext) for n in names)]

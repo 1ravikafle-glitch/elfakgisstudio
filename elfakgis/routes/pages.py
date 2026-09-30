@@ -10,7 +10,8 @@ from flask import (Flask, request, jsonify, send_file, send_from_directory,
 from elfakgis.core.config import *
 from elfakgis.core.config import _PROJECT_ROOT
 from elfakgis.core.store import (_prog, _PROG, _PROG_LOCK, _save_run_meta, _append_run,
-    _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user)
+    _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user,
+    _owns_run, _owns_run_or_404)
 from elfakgis.core.security import _rate_limit, _cool_down, _safe_filename, _safe_path, _validate_username, _get_client_ip
 from elfakgis.core.pipeline import _with_pipeline_sem
 from elfakgis.geo.kmz import _generate_run_id, _safe_runid
@@ -21,11 +22,15 @@ log = logging.getLogger("elfakgis")
 from flask import Blueprint, current_app
 pages_bp = Blueprint('pages_bp', __name__)
 @pages_bp.route("/map_editor/<run_id>")
+@_login_required
 def map_editor(run_id):
     """Standalone map editor page (opened from history or directly)."""
     run_id = _safe_runid(run_id)
-    folder = os.path.join(OUTPUT, run_id)
-    if not os.path.exists(folder):
+    # 404 (not 403) for someone else's run, so the page cannot be used to
+    # discover which run ids exist.
+    _owns_run_or_404(run_id)
+    folder = _safe_path(OUTPUT, run_id)
+    if not os.path.isdir(folder):
         abort(404, "Run not found.")
     map_file = os.path.join(folder, "output.png")
     if not os.path.exists(map_file):
@@ -84,7 +89,9 @@ def home():
     cannot flash the login screen."""
     if not _signed_in_username():
         return redirect("/login")
-    return render_template("index.html")
+    # Mint the CSRF token here so the app shell can echo it into a meta tag.
+    from elfakgis.core.csrf import generate_csrf_token
+    return render_template("index.html", csrf_token=generate_csrf_token())
 
 
 @pages_bp.route("/login")

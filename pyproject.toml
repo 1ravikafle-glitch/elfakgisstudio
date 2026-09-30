@@ -1,0 +1,102 @@
+[project]
+name = "elfakgisstudio"
+version = "1.0.0"
+description = "Professional web GIS for Nepal forestry: boundary mapping, slope analysis, compartment subdivision, survey points."
+requires-python = ">=3.9"
+
+# Runtime dependencies live in requirements.txt because Render builds from it
+# directly. They are duplicated here only as ranges so tooling knows what the
+# project needs; requirements.txt remains the single source of truth for the
+# deployed build.
+dependencies = [
+    "flask>=2.3,<4",
+    "gunicorn>=21,<24",
+    "pandas>=2.0,<3",
+    "geopandas>=0.14,<2",
+    "shapely>=2.0,<3",
+    "matplotlib>=3.7,<4",
+    "openpyxl>=3.1,<4",
+    "fiona>=1.9,<2",
+    "xlrd>=2.0,<3",
+    "pyproj>=3.6,<4",
+    "rtree>=1.0,<2",
+    "rasterio>=1.3,<2",
+    "scipy>=1.10,<2",
+    "numpy>=1.24,<3",
+    "psycopg2-binary>=2.9,<3",
+    "sqlalchemy>=2.0,<3",
+    "bcrypt>=4.0,<6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.5"]
+
+[tool.pytest.ini_options]
+testpaths = ["test.py"]
+python_files = ["test.py", "test_*.py"]
+addopts = "-ra"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+# The module split left every file carrying the same wide import preamble.
+# That is being unwound file by file rather than in one breaking pass, so
+# per-file ignores keep the lint signal useful instead of drowning it.
+exclude = [
+    "venv",
+    ".venv",
+    "outputs",
+    "uploads",
+    "dem_catalog",
+    "data",
+]
+
+[tool.ruff.lint]
+# Only rules that can indicate an actual defect are enforced.
+#
+# The module split left ~500 findings of pure style debt — imports hoisted
+# below code (E402), `import a, b, c` on one line (E401), single-line `if x: y`
+# bodies (E701), unused re-exports (F401). None of those are wrong, all of
+# them are deliberate for now, and turning them into CI failures would block
+# every future change behind a cleanup nobody asked for. They are a migration,
+# not a gate.
+#
+# F821 (undefined name), F841 (dead assignment), B006 (mutable default) and
+# E722 (bare except) do find real bugs — F821 caught a `make_valid()` call
+# with no import that had been silently doing nothing inside a bare except.
+# Those stay.
+select = [
+    "F821",  # undefined name — a typo or a missing import, always a bug
+    "F841",  # assigned but never used — dead code, often a dropped result
+    "F811",  # redefined name — a shadowed import or function
+    "B006",  # mutable default argument — shared state between calls
+    "E722",  # bare except — swallows KeyboardInterrupt and SystemExit
+]
+ignore = [
+    "E501",    # line length is the formatter's business
+    "B007",    # unused loop variable — normal in the rendering code
+    "B008",    # Flask idiom: function call in a default argument
+    "B904",    # `raise ... from` is a readability nit, not a defect
+    "E741",    # ambiguous single-letter names, pre-existing and harmless
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The preamble modules are legacy: they import a superset of what they use
+# because they were carved out of the original monolith verbatim. Trimming
+# them is deliberate, incremental work, not something to flag on every run.
+"elfakgis/core/config.py" = ["F401", "F811"]
+"elfakgis/core/store.py" = ["F401"]
+"elfakgis/core/security.py" = ["F401"]
+"elfakgis/geo/geom.py" = ["F401"]
+"elfakgis/routes/*.py" = ["F401"]
+"elfakgis/groups/*.py" = ["F401", "F811"]
+"map_layout.py" = ["F401", "E402"]
+# The layout renderer builds figure handles and threads them through helpers
+# whose return values are intentionally discarded at some call sites.
+"elfakgis/geo/render.py" = ["F841"]
+"elfakgis/routes/maps.py" = ["F841"]
+"elfakgis/routes/pipeline.py" = ["F841"]

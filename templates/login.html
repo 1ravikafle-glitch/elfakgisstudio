@@ -12,12 +12,12 @@
     <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)" />
 
     <!-- Same fonts and stylesheets as the studio, so the sign-in page and
-         the app read as one product. -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" /></noscript>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="/static/css/app.css?v=20260929-2" />
+         the app read as one product. Inter is self-hosted: the CSP does not
+         allow fonts.googleapis.com, so the old remote request was blocked and
+         the page fell back to a system font. -->
+    <link rel="preload" as="font" type="font/woff2" href="/static/fonts/inter-latin.woff2" crossorigin />
+    <link rel="stylesheet" href="/static/css/fonts.css?v=20260930-1" />
+    <link rel="stylesheet" href="/static/css/app.css?v=20260930-1" />
     <link rel="stylesheet" href="/static/css/forestry.css?v=20260929-9" />
     <link rel="stylesheet" href="/static/css/motion.css?v=20260929-2" />
 
@@ -28,10 +28,10 @@
          compete with the sign-in form or prefetch.js itself. -->
     <link rel="preload" as="style" href="/static/css/forestry.css?v=20260929-9" />
     <link rel="preload" as="script" href="/static/js/prefetch.js?v=20260929-2" />
-    <link rel="prefetch" as="style" href="/static/css/app.css?v=20260929-2" />
+    <link rel="prefetch" as="style" href="/static/css/app.css?v=20260930-1" />
     <link rel="prefetch" as="script" href="/static/js/app.js?v=20260929-8" />
-    <link rel="prefetch" as="script" href="/static/js/dock.js?v=20260927-1" />
-    <link rel="prefetch" as="script" href="/static/js/dock-resize.js?v=20260927-1" />
+    <link rel="prefetch" as="script" href="/static/js/dock.js?v=20260930-1" />
+    <link rel="prefetch" as="script" href="/static/js/dock-resize.js?v=20260930-1" />
     <link rel="preconnect" href="https://unpkg.com" crossorigin />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
 </head>
@@ -55,7 +55,7 @@
                     <input type="text" id="login-inp" class="input" name="username" placeholder="e.g. student123" maxlength="40"
                            autocomplete="username" autocapitalize="none" autocorrect="off"
                            spellcheck="false" enterkeyhint="next"
-                           aria-label="Username" autofocus
+                           aria-describedby="login-hint" autofocus
                            oninput="_checkUsernameHint(this.value)">
                     <p id="login-hint" role="status" aria-live="polite"></p>
                 </div>

@@ -24,21 +24,31 @@
    through untouched.
    ================================================================ */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `elfak-shell-${VERSION}`;
 const VENDOR_CACHE = `elfak-vendor-${VERSION}`;
 const DATA_CACHE = `elfak-data-${VERSION}`;
 const KEEP = [SHELL_CACHE, VENDOR_CACHE, DATA_CACHE];
 
-// Same-origin static assets. These are version-pinned in the templates.
+// Same-origin static assets. These are version-pinned in the templates, and
+// the SW matches on the FULL url including the ?v= query, so this list must
+// stay byte-identical to the templates or the cache serves a stale copy of a
+// file the page already asked a newer version of. VERSION invalidates the
+// whole set on deploy.
 const SHELL = [
-    '/static/css/app.css?v=20260927-1',
-    '/static/css/forestry.css?v=20260929-8',
-    '/static/js/theme.js?v=20260929-2',
-    '/static/js/app.js?v=20260929-7',
-    '/static/js/dock.js?v=20260927-1',
-    '/static/js/dock-resize.js?v=20260927-1',
-    '/static/js/prefetch.js?v=20260929-1',
+    '/static/css/fonts.css?v=20260930-1',
+    '/static/fonts/inter-latin.woff2',
+    '/static/fonts/inter-latin-ext.woff2',
+    '/static/css/app.css?v=20260930-1',
+    '/static/css/forestry.css?v=20260929-9',
+    '/static/css/motion.css?v=20260929-2',
+    '/static/js/theme.js?v=20260929-3',
+    '/static/js/app.js?v=20260929-8',
+    '/static/js/dock.js?v=20260930-1',
+    '/static/js/dock-resize.js?v=20260930-1',
+    '/static/js/prefetch.js?v=20260929-2',
+    '/static/js/boot.js?v=20260929-1',
+    '/static/js/login.js?v=20260929-3',
 ];
 
 // Third-party libraries the studio loads on demand.

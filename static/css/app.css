@@ -29,9 +29,15 @@
     --accent-glow: rgba(18,185,129,.35);
     --red: #e5484d; --amber: #f5a524; --blue: #0a84ff;
     --input: #ffffff; --hover: rgba(0,0,0,.045);
+    --shadow-xs: 0 1px 2px rgba(0,0,0,.08);
     --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
     --shadow-md: 0 4px 16px rgba(0,0,0,.08);
     --shadow-lg: 0 12px 40px rgba(0,0,0,.14);
+    /* Translucent chip surface for widgets drawn ON the map (measure
+       readouts, the area box). Distinct from --panel-solid because these
+       float over imagery and need to let it through. */
+    --panel-elevated: rgba(255,255,255,.86);
+    --panel-border: var(--border-strong);
     --r-lg: 18px; --r-md: 13px; --r-sm: 9px; --pill: 999px;
     /* Apple springs: critically damped default, no overshoot */
     --spring: cubic-bezier(.32,.72,0,1);
@@ -61,9 +67,12 @@
     --focus: rgba(69,214,154,.55);
     --accent-glow: rgba(69,214,154,.20);
     --input: #2c2c2e; --hover: rgba(255,255,255,.07);
+    --shadow-xs: 0 1px 2px rgba(0,0,0,.45);
     --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
     --shadow-md: 0 4px 16px rgba(0,0,0,.5);
     --shadow-lg: 0 12px 40px rgba(0,0,0,.6);
+    --panel-elevated: rgba(28,28,30,.86);
+    --panel-border: var(--border-strong);
     color-scheme: dark;
 }
 
@@ -286,6 +295,17 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
     display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 0; position: relative;
 }
 #out-img { max-width: 100%; max-height: 100%; object-fit: contain; display: none; border-radius: 6px; user-select: none; -webkit-user-select: none; pointer-events: none; }
+/* The export is a fixed A4 portrait sheet (8.27x11.69in @300dpi), so the
+   width/height attributes on the tag reserve the exact box and the preview
+   does not jump when the PNG lands. */
+.gallery-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Modal close button sat on a hardcoded white so it was the one control that
+   ignored the theme. These mirror the pill/btn recipe instead. */
+.modal-close { padding: 8px 20px; border-radius: 20px; border: 1px solid var(--border-strong); background: var(--panel-elevated); color: var(--txt); font-size: 12px; cursor: pointer; font-family: var(--sans); font-weight: 600; backdrop-filter: blur(8px); }
+/* Keyboard users must be able to bypass the whole header. Off-screen until
+   focused, then pinned top-left above everything. */
+.skip-link { position: fixed; top: 8px; left: 8px; z-index: 10000; transform: translateY(-200%); background: var(--accent-fill); color: var(--on-accent); padding: 10px 16px; border-radius: var(--r-sm); font-weight: 650; font-size: 13px; text-decoration: none; transition: transform .18s var(--spring); }
+.skip-link:focus { transform: translateY(0); outline: 2px solid var(--focus); outline-offset: 2px; }
 .empty-msg { font-size: 15.5px; line-height: 1.7; color: var(--muted); text-align: center; padding: 30px; }
 #osm-map { position: absolute; inset: 0; }
 .osm-idle { color: var(--muted); font-size: 14px; text-align: center; padding: 20px; }
@@ -384,6 +404,8 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 /* ── Gallery / run cards ── */
 .composer.visible { display: flex; }
 .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 10px; }
+/* Reserve each cell's box so the grid does not reflow as six PNGs decode. */
+.gallery-grid > div { aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--panel-hd); }
 .gallery-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .run-card { border: 1.5px solid var(--border); border-radius: var(--r-md); padding: 12px 14px; background: var(--panel-solid); }
 .run-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }

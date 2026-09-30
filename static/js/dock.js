@@ -1,6 +1,9 @@
     /* ── Draggable dashboard: reorder sections + resize widths (Apple: 1:1 track, interruptible) ── */
     (function(){
         const KEY = 'elfak-dock-v1';
+        // Owned by dock-resize.js. Declared here only so "reset layout" can
+        // clear it; dock.js must never write it or the two clobber each other.
+        const HEIGHT_KEY = 'elfak-dock-heights-v1';
         const main = document.querySelector('.main');
         if (!main) return;
         const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -8,7 +11,14 @@
         const dividers = () => [...main.querySelectorAll(':scope > .dock-divider')];
 
         function save(order, widths) {
-            try { localStorage.setItem(KEY, JSON.stringify({ order, widths })); } catch (_) {}
+            // Merge rather than overwrite: dock-resize.js also writes `widths`
+            // into this same key, and a bare overwrite would drop fields the
+            // other module owns.
+            try {
+                let cur = {};
+                try { cur = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (_) {}
+                localStorage.setItem(KEY, JSON.stringify({ ...cur, order, widths }));
+            } catch (_) {}
         }
         function load() {
             try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (_) { return null; }
@@ -107,7 +117,13 @@
                     h.addEventListener('pointercancel', up);
                 });
                 h.addEventListener('dblclick', () => {
-                    try { localStorage.removeItem(KEY); } catch (_) {}
+                    // Reset means reset: heights live in their own key (owned by
+                    // dock-resize.js) and must go too, or a "reset" layout keeps
+                    // the stale section heights.
+                    try {
+                        localStorage.removeItem(KEY);
+                        localStorage.removeItem(HEIGHT_KEY);
+                    } catch (_) {}
                     location.reload();
                 });
                 h.title = 'Drag to reorder · Double-click to reset layout';
@@ -144,7 +160,6 @@
                         div.removeEventListener('pointerup', up);
                         div.classList.remove('active');
                         const st = currentState();
-                        const prevSaved = load();
                         save(st.order, st.widths);
                     };
                     div.addEventListener('pointermove', move);

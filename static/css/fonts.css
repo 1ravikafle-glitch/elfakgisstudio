@@ -1,0 +1,46 @@
+/* Inter, self-hosted.
+ *
+ * This used to come from fonts.googleapis.com. Two reasons it is now local:
+ *
+ * 1. Correctness. The Content-Security-Policy added for the security work
+ *    allows 'self' for styles and fonts and does not whitelist Google. The
+ *    remote font was therefore blocked outright, and the whole UI silently
+ *    fell back to a system font — the design nobody had approved.
+ * 2. Cost. The remote request is a third-party connection on every cold
+ *    visit, to a host that also learns who is visiting. One variable font
+ *    covers the whole 400-800 range the app asks for, and the two Latin
+ *    subsets are 133 KB combined; requesting five static weights separately
+ *    would be several times that.
+ *
+ * font-display: swap keeps text readable while the file loads, and the
+ * Latin subset is preloaded in the templates so it usually arrives before
+ * first paint. The unicode-ranges are Google's own, so the browser still
+ * downloads only the subset a page needs and falls through to the next for
+ * anything outside it.
+ *
+ * Devanagari is deliberately absent: Inter does not cover it, and neither
+ * did the previous request, so Nepali place names keep using the system
+ * fallback exactly as before.
+ */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('../fonts/inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('../fonts/inter-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}

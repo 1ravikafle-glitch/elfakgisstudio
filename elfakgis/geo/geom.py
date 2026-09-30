@@ -77,6 +77,11 @@ def _force_valid(geom):
     except Exception:
         pass
     try:
+        # shapely.validation.make_valid is the strongest repair and can rescue
+        # polygons that buffer(0) mangles, but it only exists in shapely 2+.
+        # It used to be called here with no import at all, so the call raised
+        # NameError into a bare `except` and this tier silently never ran.
+        from shapely.validation import make_valid
         g = make_valid(geom)
         if g and not g.is_empty and g.is_valid:
             return g

@@ -10,6 +10,7 @@ from elfakgis.core.config import *
 from elfakgis.core.store import (_prog, _PROG, _PROG_LOCK, _save_run_meta, _append_run,
     _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user)
 from elfakgis.core.security import _rate_limit, _cool_down, _safe_filename, _safe_path, _validate_username, _get_client_ip
+from elfakgis.core.csrf import csrf_protect
 from elfakgis.core.pipeline import _with_pipeline_sem
 from elfakgis.geo.kmz import _generate_run_id, _safe_runid
 
@@ -22,6 +23,8 @@ dem_bp = Blueprint('dem_bp', __name__)
 # ----------------------------------------------------------------------
 
 @dem_bp.route("/dem_catalog")
+@_login_required
+@_rate_limit(limit=60, window=60)
 def dem_catalog():
     import urllib.request as _ur
     import json as _json
@@ -80,6 +83,9 @@ def dem_catalog():
     return jsonify(payload)
 
 @dem_bp.route("/dem_fetch", methods=["POST"])
+@_login_required
+@csrf_protect
+@_rate_limit(limit=30, window=60)
 def dem_fetch():
     import urllib.request as _ur
     import urllib.error as _ue

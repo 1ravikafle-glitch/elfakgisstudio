@@ -8,8 +8,12 @@ from flask import (Flask, request, jsonify, send_file, send_from_directory,
                    render_template, session, Response, stream_with_context, abort, g)
 from elfakgis.core.config import *
 from elfakgis.core.store import (_prog, _PROG, _PROG_LOCK, _save_run_meta, _append_run,
-    _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user)
-from elfakgis.core.security import _rate_limit, _cool_down, _safe_filename, _safe_path, _validate_username, _get_client_ip
+    _require_login, _login_required, _lu, _su, _register_user, _login_existing, _logout_user,
+    _claim_run, _run_owner, _owns_run_or_404)
+from elfakgis.core.security import (_rate_limit, _cool_down, _safe_filename, _safe_path,
+    _validate_username, _get_client_ip, _assert_upload_size, _assert_zip_within_budget,
+    ArchiveTooLarge)
+from elfakgis.core.csrf import csrf_protect
 from elfakgis.core.pipeline import _with_pipeline_sem
 from elfakgis.geo.kmz import _generate_run_id, _safe_runid
 
@@ -60,14 +64,18 @@ def _upload_impl():
         label_col = request.form.get("label_col", "").strip()
         try:
             mapping = json.loads(request.form.get("mapping", "{}"))
-        except:
+        except Exception:
             mapping = {}
         w = float(request.form.get("w", 50))
         h = float(request.form.get("h", 50))
         rows = int(request.form.get("rows", 10))
         cols = int(request.form.get("cols", 10))
         forest = request.form.get("forest") or (mapping or {}).get("forest") or "FOREST"
-        username = _require_login() or "guest"
+        username = _require_login()
+        # Claim before launch: /progress is polled from the moment the
+        # 202 comes back, and _append_run only fires when the job
+        # *completes*. Without this the run has no owner while it runs.
+        _claim_run(run_id, username)
         out = os.path.join(OUTPUT, run_id)
         os.makedirs(out, exist_ok=True)
         crs = get_crs(zone)
@@ -173,7 +181,7 @@ def _upload_impl():
             if fas:
                 try:
                     fa = float(fas)
-                except:
+                except Exception:
                     pass
             import geopandas as gpd
             from elfakgis.groups.group_f import group_f
@@ -306,7 +314,11 @@ def _run_h_impl():
         if os.path.exists(preview_path):
             shutil.copy(preview_path, os.path.join(out_dir, "output.png"))
 
-        _append_run(_require_login() or "guest", run_id, "H", "Group H maps generated")
+        # The username was captured and the run claimed when the job was
+        # accepted; re-read it here so the history record lands on the same
+        # owner even if the session was re-established from the remember
+        # cookie in between.
+        _append_run(_require_login() or _run_owner(run_id), run_id, "H", "Group H maps generated")
         _prog(run_id, "Complete.", 100)
 
         return jsonify({
@@ -336,14 +348,18 @@ def _run_g_impl():
             spacing = float(request.form.get("spacing", "20"))
             if spacing <= 0:
                 raise ValueError
-        except:
+        except Exception:
             return jsonify({"error": "Invalid spacing value.", "run_id": run_id}), 400
 
         # Determine base_name from uploaded file
         base_name = os.path.splitext(os.path.basename(file.filename))[0]
         target_shp = request.form.get("target_shp", "").strip() or None
 
-        username = _require_login() or "guest"
+        username = _require_login()
+        # Claim before launch: /progress is polled from the moment the
+        # 202 comes back, and _append_run only fires when the job
+        # *completes*. Without this the run has no owner while it runs.
+        _claim_run(run_id, username)
         out = os.path.join(OUTPUT, run_id)
         os.makedirs(out, exist_ok=True)
 
@@ -365,7 +381,7 @@ def _run_g_impl():
         kmz_url = None
         try:
             kmz_url = generate_kmz(poly_gdf, gpd.GeoDataFrame(), shp_gdf, out, run_id)
-        except:
+        except Exception:
             pass
 
         _append_run(username, run_id, "G", f"{summary['total']} pts | {summary['compartments']} compartments")
@@ -384,6 +400,8 @@ def _run_g_impl():
 
 
 @pipeline_bp.route("/thesis_options", methods=["GET"])
+@_login_required
+@_rate_limit(limit=120, window=60)
 def thesis_options():
     """Dropdown data for Thesis Map (Group I): provinces + districts."""
     try:
@@ -421,7 +439,11 @@ def _run_thesis_impl():
         except Exception:
             mapping = {}
 
-        username = _require_login() or "guest"
+        username = _require_login()
+        # Claim before launch: /progress is polled from the moment the
+        # 202 comes back, and _append_run only fires when the job
+        # *completes*. Without this the run has no owner while it runs.
+        _claim_run(run_id, username)
         out = os.path.join(OUTPUT, run_id)
         os.makedirs(out, exist_ok=True)
 
@@ -469,10 +491,25 @@ _BG_SEM = threading.Semaphore(int(os.environ.get("MAX_BG_JOBS", "2")))
 
 
 def _bg_save(storage, bg_dir, field):
-    """Spool one uploaded file to the bg dir. Returns {field: (name, path)}."""
+    """Spool one uploaded file to the bg dir. Returns {field: (name, path)}.
+
+    The on-disk size check runs *after* the write rather than before,
+    because Werkzeug streams the body to a temp file and never holds the
+    whole upload in memory — so a size check here is what actually stops a
+    2 GB file from filling the disk, and Flask's MAX_CONTENT_LENGTH is the
+    earlier backstop that stops it arriving at all.
+    """
     ext = os.path.splitext(storage.filename or "")[1].lower()
     dest = os.path.join(bg_dir, f"{field}{ext}")
     storage.save(dest)
+    size = _assert_upload_size(dest)
+    if ext == ".zip":
+        # A zip can declare orders of magnitude more content than it holds.
+        # Cheap to check here (central directory only, no decompression) and
+        # it turns a trivial denial-of-service upload into a 400.
+        with zipfile.ZipFile(dest) as _z:
+            _assert_zip_within_budget(_z)
+    log.info("Spooled %s (%s, %.1f KB)", field, storage.filename, size / 1024.0)
     return {field: (storage.filename, dest)}
 
 
@@ -555,6 +592,9 @@ def _bg_accept(file_fields):
 
 
 @pipeline_bp.route("/upload", methods=["POST"])
+@_login_required
+@csrf_protect
+@_rate_limit(limit=20, window=60)
 @_cool_down(seconds=2)
 def upload():
     """Accept-only wrapper: snapshot uploads, launch job, return 202."""
@@ -582,7 +622,11 @@ def upload():
             return jsonify({"error": "No file uploaded.", "run_id": run_id}), 400
         form = request.form.to_dict()
         form["_run_id"] = run_id
-        username = _require_login() or "guest"
+        username = _require_login()
+        # Claim before launch: /progress is polled from the moment the
+        # 202 comes back, and _append_run only fires when the job
+        # *completes*. Without this the run has no owner while it runs.
+        _claim_run(run_id, username)
         _launch_bg(_upload_impl, run_id, username, saved, form)
     except Exception as e:
         return jsonify({"error": str(e), "run_id": run_id}), 400
@@ -590,6 +634,9 @@ def upload():
 
 
 @pipeline_bp.route("/run_h", methods=["POST"])
+@_login_required
+@csrf_protect
+@_rate_limit(limit=10, window=60)
 @_cool_down(seconds=2)
 def run_h():
     """Accept-only wrapper for Group H (5 required files + 1 optional)."""
@@ -611,7 +658,11 @@ def run_h():
         saved = _bg_accept(required + ['survey_points'])
         form = request.form.to_dict()
         form["_run_id"] = run_id
-        username = _require_login() or "guest"
+        username = _require_login()
+        # Claim before launch: /progress is polled from the moment the
+        # 202 comes back, and _append_run only fires when the job
+        # *completes*. Without this the run has no owner while it runs.
+        _claim_run(run_id, username)
         _launch_bg(_run_h_impl, run_id, username, saved, form)
     except Exception as e:
         return jsonify({"error": str(e), "run_id": run_id}), 400
@@ -619,6 +670,9 @@ def run_h():
 
 
 @pipeline_bp.route("/run_g", methods=["POST"])
+@_login_required
+@csrf_protect
+@_rate_limit(limit=20, window=60)
 @_cool_down(seconds=2)
 def run_g():
     """Accept-only wrapper for Group G."""
@@ -634,7 +688,11 @@ def run_g():
             return jsonify({"error": "No shapefile uploaded.", "run_id": run_id}), 400
         form = request.form.to_dict()
         form["_run_id"] = run_id
-        username = _require_login() or "guest"
+        username = _require_login()
+        # Claim before launch: /progress is polled from the moment the
+        # 202 comes back, and _append_run only fires when the job
+        # *completes*. Without this the run has no owner while it runs.
+        _claim_run(run_id, username)
         _launch_bg(_run_g_impl, run_id, username, saved, form)
     except Exception as e:
         return jsonify({"error": str(e), "run_id": run_id}), 400
@@ -642,6 +700,9 @@ def run_g():
 
 
 @pipeline_bp.route("/run_thesis", methods=["POST"])
+@_login_required
+@csrf_protect
+@_rate_limit(limit=20, window=60)
 @_cool_down(seconds=2)
 def run_thesis():
     """Accept-only wrapper for Group I (Thesis Locator Map)."""
@@ -669,7 +730,11 @@ def run_thesis():
             saved = _bg_save(request.files["boundary"], bg_dir, "boundary")
         form = request.form.to_dict()
         form["_run_id"] = run_id
-        username = _require_login() or "guest"
+        username = _require_login()
+        # Claim before launch: /progress is polled from the moment the
+        # 202 comes back, and _append_run only fires when the job
+        # *completes*. Without this the run has no owner while it runs.
+        _claim_run(run_id, username)
         _launch_bg(_run_thesis_impl, run_id, username, saved, form)
     except Exception as e:
         return jsonify({"error": str(e), "run_id": run_id}), 400

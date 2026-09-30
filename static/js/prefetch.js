@@ -45,19 +45,32 @@
     // Order is priority: everything the first screen needs comes first,
     // optional libraries last. The ?v= values are generated, so these
     // URLs are immutable and safe to cache for a year.
+    //
+    // `sri` is a Subresource Integrity hash, and it must agree with the one
+    // app.js puts on the same URL. Here it only matters for the no-fetch
+    // fallback path below, but keeping a single table means the two loaders
+    // cannot drift: if unpkg or cdnjs ever serve different bytes, the
+    // browser refuses the script instead of running it.
     const ASSETS = [
         { url: '/static/css/app.css?v=20260929-2',     kind: 'css' },
         { url: '/static/css/forestry.css?v=20260929-9', kind: 'css' },
         { url: '/static/js/dock.js?v=20260927-1',       kind: 'js'  },
         { url: '/static/js/dock-resize.js?v=20260927-1',kind: 'js'  },
         { url: '/static/js/app.js?v=20260929-8',        kind: 'js', big: true },
-        { url: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', kind: 'js' },
-        { url: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', kind: 'css' },
-        { url: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', kind: 'js' },
-        { url: 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js', kind: 'js' },
-        { url: 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.css', kind: 'css' },
-        { url: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', kind: 'js' },
-        { url: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', kind: 'js', big: true },
+        { url: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', kind: 'js',
+          sri: 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH' },
+        { url: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', kind: 'css',
+          sri: 'sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H' },
+        { url: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', kind: 'js',
+          sri: 'sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG' },
+        { url: 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js', kind: 'js',
+          sri: 'sha384-ld2Q6oJGnECCjh+LLDcIWiAxD4lZGgdYvhwDcp4Uhw23A8VSqQcD7YOoNHdwPjQc' },
+        { url: 'https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.css', kind: 'css',
+          sri: 'sha384-kFHJXoxnyoGXzCN/jBWXbLGVLIsjMOz3OflpKpSJorRSOY++lYGPt8VoHurVr94q' },
+        { url: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', kind: 'js',
+          sri: 'sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H' },
+        { url: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', kind: 'js', big: true,
+          sri: 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw' },
     ];
 
     // Subscribing is cheap and safe to do from any page that loads this
@@ -195,6 +208,12 @@
             } else {
                 el.src = asset.url;
                 el.async = true;
+            }
+            // Same integrity and credentials mode as app.js, so this warm-up
+            // cannot be used to plant a script the real loader would reject.
+            if (asset.sri) {
+                el.integrity = asset.sri;
+                el.crossOrigin = 'anonymous';
             }
             el.onload = function () { resolve(); };
             el.onerror = function () { reject(new Error(asset.url)); };
