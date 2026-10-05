@@ -72,18 +72,18 @@
     <div id="hist-drawer" role="dialog" aria-modal="true" aria-label="Run history" aria-hidden="true">
         <div class="drawer-hd">
             <div class="drawer-title">📋 Run History</div>
-            <button class="drawer-clear" id="hist-clear" onclick="clearHistory()" hidden>🗑 Clear all</button>
-            <button class="close-drawer" onclick="toggleHist()" aria-label="Close history">✕</button>
+            <button class="drawer-clear" id="hist-clear" data-click="clearHistory()" hidden>🗑 Clear all</button>
+            <button class="close-drawer" data-click="toggleHist()" aria-label="Close history">✕</button>
         </div>
         <div class="drawer-body" id="hist-body"><div class="empty-msg">No runs yet.</div></div>
     </div>
-    <div id="hist-bg" aria-hidden="true" onclick="toggleHist()"></div>
+    <div id="hist-bg" aria-hidden="true" data-click="toggleHist()"></div>
 
     <div class="shell">
 
         <!-- HEADER -->
         <header class="hdr">
-            <button id="mobile-nav-btn" class="mobile-nav-btn" onclick="toggleMobileNav()" aria-label="Menu" aria-expanded="false" aria-controls="left-nav-panel">
+            <button id="mobile-nav-btn" class="mobile-nav-btn" data-click="toggleMobileNav()" aria-label="Menu" aria-expanded="false" aria-controls="left-nav-panel">
                 <span></span><span></span><span></span>
             </button>
             <div class="logo">
@@ -101,9 +101,9 @@
             <div class="hdr-user" id="user-bar">
                 <div class="avatar" id="uavatar">?</div>
                 <span id="uname" style="font-size:12px;font-weight:600;color:var(--txt2)"></span>
-                <button class="hdr-btn" onclick="toggleHist()">📋 History <span id="hcnt"></span></button>
+                <button class="hdr-btn" data-click="toggleHist()">📋 History <span id="hcnt"></span></button>
                 <a href="/about" target="_blank" class="hdr-btn" style="text-decoration:none">ℹ About</a>
-                <button class="hdr-btn danger" onclick="doLogout()">Sign Out</button>
+                <button class="hdr-btn danger" data-click="doLogout()">Sign Out</button>
             </div>
             <a class="forestry-badge" id="forestry-badge" href="https://forestry-pscpreparation.onrender.com/desktop/" target="_blank" rel="noopener noreferrer" title="Back to Forestry PSC Preparation" data-username="{{ username }}">
                 <span class="fb-mark" aria-hidden="true">F</span>
@@ -111,7 +111,7 @@
                 <span class="fb-arrow" aria-hidden="true">&#8599;</span>
                 <span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">Open Forestry PSC Preparation in a new tab</span>
             </a>
-            <button id="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme" style="background:none;border:1.5px solid var(--border);border-radius:50px;padding:5px 14px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--txt2);display:flex;align-items:center;gap:7px;flex-shrink:0;min-width:90px;justify-content:center;transition:all .3s var(--ease);position:relative;overflow:hidden;">
+            <button id="theme-btn" data-click="toggleTheme()" aria-label="Toggle theme" style="background:none;border:1.5px solid var(--border);border-radius:50px;padding:5px 14px;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--txt2);display:flex;align-items:center;gap:7px;flex-shrink:0;min-width:90px;justify-content:center;transition:all .3s var(--ease);position:relative;overflow:hidden;">
                 <span id="theme-icon" style="font-size:14px;transition:transform .5s var(--spring)">🌙</span>
                 <span id="theme-label" style="font-size:11px">Dark</span>
             </button>
@@ -119,31 +119,31 @@
 
         <!-- MAIN -->
         <div class="main" id="main-content" role="main">
-            <div id="mobile-nav-bg" class="mobile-nav-bg" aria-hidden="true" onclick="toggleMobileNav()"></div>
+            <div id="mobile-nav-bg" class="mobile-nav-bg" aria-hidden="true" data-click="toggleMobileNav()"></div>
 
             <!-- LEFT NAV -->
             <div class="panel dock-section" id="left-nav-panel" data-dock="navigator">
                 <div class="panel-hd">🗂 Mode</div>
                 <div class="panel-body">
-                    <div class="nav-item active" onclick="switchTab('A')">🌲 A — Boundary</div>
-                    <div class="nav-item" onclick="switchTab('B')">🌲 B — Segmented Forest</div>
-                    <div class="nav-item" onclick="switchTab('C')">📍 C — Sample Plot</div>
-                    <div class="nav-item" onclick="switchTab('D')">🗂 D — Multi-Forest</div>
-                    <div class="nav-item" onclick="switchTab('E')">✂️ E — Subdivider</div>
-                    <div class="nav-item" onclick="switchTab('F')">🏔 F — Slope</div>
-                    <div class="nav-item" onclick="switchTab('G')">📌 G — Survey Points</div>
-                    <div class="nav-item" onclick="switchTab('H')">
+                    <div class="nav-item active" data-click="switchTab('A')">🌲 A — Boundary</div>
+                    <div class="nav-item" data-click="switchTab('B')">🌲 B — Segmented Forest</div>
+                    <div class="nav-item" data-click="switchTab('C')">📍 C — Sample Plot</div>
+                    <div class="nav-item" data-click="switchTab('D')">🗂 D — Multi-Forest</div>
+                    <div class="nav-item" data-click="switchTab('E')">✂️ E — Subdivider</div>
+                    <div class="nav-item" data-click="switchTab('F')">🏔 F — Slope</div>
+                    <div class="nav-item" data-click="switchTab('G')">📌 G — Survey Points</div>
+                    <div class="nav-item" data-click="switchTab('H')">
                         🌲 H — Sample Points
                         <span style="background:var(--accent);color:var(--panel-solid);font-size:11px;padding:1px 7px;border-radius:10px;margin-left:4px;">NEW</span>
                     </div>
-                    <div class="nav-item" onclick="switchTab('I')">
+                    <div class="nav-item" data-click="switchTab('I')">
                         🗺 I — Thesis Map
                         <span style="background:var(--accent);color:var(--panel-solid);font-size:11px;padding:1px 7px;border-radius:10px;margin-left:4px;">NEW</span>
                     </div>
                     <div class="nav-sep"></div>
                     <div class="fg" style="margin-top:6px">
                         <label>UTM Zone / CRS</label>
-                        <select id="zone" onchange="document.getElementById('hdr-crs').textContent='EPSG:326'+this.value">
+                        <select id="zone" data-change="__setCrs()">
                             <option value="44">Zone 44N — EPSG:32644</option>
                             <option value="45">Zone 45N — EPSG:32645</option>
                             <option value="43">Zone 43N — EPSG:32643</option>
@@ -169,15 +169,15 @@
                     <div class="panel-hd">⚙️ Parameters
                         <div class="mtabs">
                             <span class="mtab-thumb" aria-hidden="true"></span>
-                            <div class="mtab active" id="mt-A" onclick="switchTab('A')">A</div>
-                            <div class="mtab" id="mt-B" onclick="switchTab('B')">B</div>
-                            <div class="mtab" id="mt-C" onclick="switchTab('C')">C</div>
-                            <div class="mtab" id="mt-D" onclick="switchTab('D')">D</div>
-                            <div class="mtab" id="mt-E" onclick="switchTab('E')">E</div>
-                            <div class="mtab" id="mt-F" onclick="switchTab('F')">F</div>
-                            <div class="mtab" id="mt-G" onclick="switchTab('G')">G</div>
-                            <div class="mtab" id="mt-H" onclick="switchTab('H')">H</div>
-                            <div class="mtab" id="mt-I" onclick="switchTab('I')">I</div>
+                            <div class="mtab active" id="mt-A" data-click="switchTab('A')">A</div>
+                            <div class="mtab" id="mt-B" data-click="switchTab('B')">B</div>
+                            <div class="mtab" id="mt-C" data-click="switchTab('C')">C</div>
+                            <div class="mtab" id="mt-D" data-click="switchTab('D')">D</div>
+                            <div class="mtab" id="mt-E" data-click="switchTab('E')">E</div>
+                            <div class="mtab" id="mt-F" data-click="switchTab('F')">F</div>
+                            <div class="mtab" id="mt-G" data-click="switchTab('G')">G</div>
+                            <div class="mtab" id="mt-H" data-click="switchTab('H')">H</div>
+                            <div class="mtab" id="mt-I" data-click="switchTab('I')">I</div>
                         </div>
                     </div>
                     <div class="panel-body config-area">
@@ -218,8 +218,8 @@
                             <div class="dz" id="dz-C"><span class="dz-text">📂 CSV / XLS or ZIP Shapefile</span><input type="file" class="fi" data-card="C" id="fi-C" accept=".csv,.xls,.xlsx,.zip"></div>
                             <div class="fg"><label>Input Mode</label>
                                 <div class="toggle-row">
-                                    <div class="tog on" id="ct-A" onclick="setCMode('A')">Simple Poly</div>
-                                    <div class="tog" id="ct-B" onclick="setCMode('B')">Segmented</div>
+                                    <div class="tog on" id="ct-A" data-click="setCMode('A')">Simple Poly</div>
+                                    <div class="tog" id="ct-B" data-click="setCMode('B')">Segmented</div>
                                 </div>
                             </div>
                             <div id="c-zip-notice" class="hidden">
@@ -255,8 +255,8 @@
                             <div class="dz" id="dz-D"><span class="dz-text">📂 Multi-Forest File</span><input type="file" class="fi" data-card="D" accept=".csv,.xls,.xlsx"></div>
                             <div class="fg"><label>Sub-Mode</label>
                                 <div class="toggle-row">
-                                    <div class="tog on" id="dt-A" onclick="setDMode('A')">Whole Forest</div>
-                                    <div class="tog" id="dt-B" onclick="setDMode('B')">Segmented</div>
+                                    <div class="tog on" id="dt-A" data-click="setDMode('A')">Whole Forest</div>
+                                    <div class="tog" id="dt-B" data-click="setDMode('B')">Segmented</div>
                                 </div>
                             </div>
                             <div class="row2">
@@ -284,8 +284,8 @@
                             <div id="e-csv-fields">
                                 <div class="fg"><label>Input Mode</label>
                                     <div class="toggle-row">
-                                        <div class="tog on" id="et-A" onclick="setEMode('A')">Single Forest</div>
-                                        <div class="tog" id="et-B" onclick="setEMode('B')">Multi-Forest</div>
+                                        <div class="tog on" id="et-A" data-click="setEMode('A')">Single Forest</div>
+                                        <div class="tog" id="et-B" data-click="setEMode('B')">Multi-Forest</div>
                                     </div>
                                 </div>
                                 <div class="row2">
@@ -300,7 +300,7 @@
                             </div>
                             <div class="row2">
                                 <div class="fg"><label>Compartments (2–15)</label>
-                                    <input type="number" id="e-n" value="4" min="2" max="15" step="1" oninput="this.value=Math.max(2,Math.min(15,parseInt(this.value)||4));document.getElementById('e-n-disp').textContent=this.value">
+                                    <input type="number" id="e-n" value="4" min="2" max="15" step="1" data-input="__clampEdgeN()">
                                 </div>
                                 <div class="fg"><label>Area Tol ± ha</label>
                                     <input type="number" id="e-tol" value="0.3" min="0.1" max="0.5" step="0.05"></div>
@@ -322,9 +322,9 @@
                         <div class="card" id="card-F">
                             <div class="fg"><label>Analysis Mode</label>
                                 <div class="toggle-row">
-                                    <div class="tog on" id="ft-A" onclick="setFMode('A')">Single Forest</div>
-                                    <div class="tog" id="ft-B" onclick="setFMode('B')">Multi-Forest</div>
-                                    <div class="tog" id="ft-E" onclick="setFMode('E')">Compartments</div>
+                                    <div class="tog on" id="ft-A" data-click="setFMode('A')">Single Forest</div>
+                                    <div class="tog" id="ft-B" data-click="setFMode('B')">Multi-Forest</div>
+                                    <div class="tog" id="ft-E" data-click="setFMode('E')">Compartments</div>
                                 </div>
                             </div>
                             <div class="badge" id="f-hint">Single boundary → one slope table for the whole forest</div>
@@ -361,13 +361,13 @@
                                     <label>DEM Library
                                         <span style="color:var(--accent);font-size:11px;margin-left:4px">📦 44N · 45N ready</span>
                                     </label>
-                                    <input type="text" id="f-dem-search" placeholder="🔍 Search by name or zone (e.g. 44N, N27…)" oninput="_filterDemList(this.value)" style="margin-bottom:3px">
+                                    <input type="text" id="f-dem-search" placeholder="🔍 Search by name or zone (e.g. 44N, N27…)" data-input="_filterDemList(this.value)" style="margin-bottom:3px">
                                     <div style="display:flex;gap:4px;margin-bottom:4px">
-                                        <button onclick="_filterDemList('','')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-all">All Zones</button>
-                                        <button onclick="_filterDemList('','44N')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-44">Zone 44N</button>
-                                        <button onclick="_filterDemList('','45N')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-45">Zone 45N</button>
+                                        <button data-click="_filterDemList('','')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-all">All Zones</button>
+                                        <button data-click="_filterDemList('','44N')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-44">Zone 44N</button>
+                                        <button data-click="_filterDemList('','45N')" style="flex:1;padding:4px;font-size:11px;font-family:var(--mono);font-weight:700;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--panel);color:var(--txt2);transition:all .2s" id="dem-tab-45">Zone 45N</button>
                                     </div>
-                                    <select id="f-dem-catalog" size="5" style="height:auto;border-color:var(--accent-line);font-size:11px;font-family:var(--mono);padding:4px;min-height:65px" onchange="_onDemSelect(this)">
+                                    <select id="f-dem-catalog" size="5" style="height:auto;border-color:var(--accent-line);font-size:11px;font-family:var(--mono);padding:4px;min-height:65px" data-change="_onDemSelect(this)">
                                         <option value="" disabled>Loading DEM catalog from GitHub…</option>
                                     </select>
                                     <div id="f-dem-cat-info" style="font-size:11px;color:var(--muted);font-family:var(--mono);min-height:16px;line-height:1.6">
@@ -385,7 +385,7 @@
                                 </div>
                                 <div class="dz" id="dz-F-dem" style="transition:opacity .3s,filter .3s">
                                     <span class="dz-text" id="f-dem-lbl">🏔 Upload DEM (.tif)</span>
-                                    <input type="file" id="fi-F-dem" accept=".tif,.tiff" onchange="if(this.files[0]){_demCacheKey='';document.getElementById('f-dem-lbl').textContent='📄 '+this.files[0].name;const dzD=document.getElementById('dz-F-dem');dzD.style.opacity='1';dzD.style.filter='none';}">
+                                    <input type="file" id="fi-F-dem" accept=".tif,.tiff" data-change="__demChosen()">
                                 </div>
                             </div>
                             <div class="fg"><label>Field Area ha (optional)</label>
@@ -494,7 +494,7 @@
                                 </div>
                                 <div class="fg" style="justify-content:center;">
                                     <label>&nbsp;</label>
-                                    <button class="run-btn" id="run-h-btn" onclick="runGroupH()" style="width:100%;">🚀 Generate Maps</button>
+                                    <button class="run-btn" id="run-h-btn" data-click="runGroupH()" style="width:100%;">🚀 Generate Maps</button>
                                 </div>
                             </div>
 
@@ -514,10 +514,10 @@
                                     <div><img id="h-preview-survey" class="gallery-thumb" alt="Survey Point Map" width="1500" height="1125"></div>
                                 </div>
                                 <div class="gallery-actions">
-                                    <button onclick="window.location.href='/download/'+currentRunId" class="etool primary">📦 Download ZIP</button>
-                                    <button onclick="downloadGroupH('png')" class="etool">⬇ PNG</button>
-                                    <button onclick="downloadGroupH('pdf')" class="etool">⬇ PDF</button>
-                                    <button onclick="downloadGroupH('svg')" class="etool">⬇ SVG</button>
+                                    <button data-click="__downloadRun()" class="etool primary">📦 Download ZIP</button>
+                                    <button data-click="downloadGroupH('png')" class="etool">⬇ PNG</button>
+                                    <button data-click="downloadGroupH('pdf')" class="etool">⬇ PDF</button>
+                                    <button data-click="downloadGroupH('svg')" class="etool">⬇ SVG</button>
                                 </div>
                             </div>
                         </div><!-- /card-H -->
@@ -530,7 +530,7 @@
                             </div>
                             <div class="row2">
                                 <div class="fg"><label>Province <span style="color:var(--red);">*</span></label>
-                                    <select id="t-province" onchange="onThesisProvince()"><option value="">— loading… —</option></select></div>
+                                    <select id="t-province" data-change="onThesisProvince()"><option value="">— loading… —</option></select></div>
                                 <div class="fg"><label>District <span style="color:var(--red);">*</span></label>
                                     <select id="t-district"><option value="">— select province first —</option></select></div>
                             </div>
@@ -559,7 +559,7 @@
                 <!-- CONSOLE -->
                 <div class="panel" style="flex-direction:row;padding:0">
                     <div class="console" style="flex:1">
-                        <button class="run-btn" id="run-btn" onclick="runPipeline()">▶ Run Pipeline</button>
+                        <button class="run-btn" id="run-btn" data-click="runPipeline()">▶ Run Pipeline</button>
                         <div class="prog-wrap">
                             <div class="prog-top">
                                 <div class="prog-label" id="prog-lbl">Ready</div>
@@ -578,9 +578,9 @@
             <div class="panel preview-panel dock-section" data-dock="preview">
                 <div class="panel-hd">🗺 Preview &amp; Export</div>
                 <div class="ptabs">
-                    <div class="ptab on" id="pt-static" onclick="switchPView('static')">🖼 PNG Map</div>
-                    <div class="ptab" id="pt-osm" onclick="switchPView('osm')">🌍 OpenStreetMap</div>
-                    <div class="ptab" id="pt-compose" onclick="switchPView('compose')">🎨 Composer</div>
+                    <div class="ptab on" id="pt-static" data-click="switchPView('static')">🖼 PNG Map</div>
+                    <div class="ptab" id="pt-osm" data-click="switchPView('osm')">🌍 OpenStreetMap</div>
+                    <div class="ptab" id="pt-compose" data-click="switchPView('compose')">🎨 Composer</div>
                 </div>
 
                 <!-- PNG view -->
@@ -669,33 +669,33 @@
 
                             <div id="layer-panel" class="layer-panel"></div>
                             <div id="align-toolbar" class="align-toolbar">
-                                <button class="etool" onclick="alignSelected('left')" title="Align Left" aria-label="Align Left">⬅</button>
-                                <button class="etool" onclick="alignSelected('center-h')" title="Center Horizontally" aria-label="Center Horizontally">⟷</button>
-                                <button class="etool" onclick="alignSelected('right')" title="Align Right" aria-label="Align Right">➡</button>
+                                <button class="etool" data-click="alignSelected('left')" title="Align Left" aria-label="Align Left">⬅</button>
+                                <button class="etool" data-click="alignSelected('center-h')" title="Center Horizontally" aria-label="Center Horizontally">⟷</button>
+                                <button class="etool" data-click="alignSelected('right')" title="Align Right" aria-label="Align Right">➡</button>
                                 <span class="sep-dot"></span>
-                                <button class="etool" onclick="alignSelected('top')" title="Align Top" aria-label="Align Top">⬆</button>
-                                <button class="etool" onclick="alignSelected('center-v')" title="Center Vertically" aria-label="Center Vertically">⟷</button>
-                                <button class="etool" onclick="alignSelected('bottom')" title="Align Bottom" aria-label="Align Bottom">⬇</button>
+                                <button class="etool" data-click="alignSelected('top')" title="Align Top" aria-label="Align Top">⬆</button>
+                                <button class="etool" data-click="alignSelected('center-v')" title="Center Vertically" aria-label="Center Vertically">⟷</button>
+                                <button class="etool" data-click="alignSelected('bottom')" title="Align Bottom" aria-label="Align Bottom">⬇</button>
                                 <span class="sep-dot"></span>
-                                <button class="etool" onclick="alignSelected('distribute-h')" title="Distribute Horizontally" aria-label="Distribute Horizontally">⊞</button>
-                                <button class="etool" onclick="alignSelected('distribute-v')" title="Distribute Vertically" aria-label="Distribute Vertically">⊟</button>
+                                <button class="etool" data-click="alignSelected('distribute-h')" title="Distribute Horizontally" aria-label="Distribute Horizontally">⊞</button>
+                                <button class="etool" data-click="alignSelected('distribute-v')" title="Distribute Vertically" aria-label="Distribute Vertically">⊟</button>
                             </div>
                         </div><!-- overlay-layer -->
                     </div><!-- canvas-wrap -->
 
                     <!-- LAYOUT TOOLBAR -->
                     <div class="layout-toolbar" id="layout-toolbar">
-                        <button class="etool primary" id="layout-edit-btn" onclick="toggleLayoutEdit()">✥ Edit Layout</button>
-                        <button class="etool" id="layout-reset-btn" onclick="resetLayoutPositions()" style="display:none">↺ Reset</button>
+                        <button class="etool primary" id="layout-edit-btn" data-click="toggleLayoutEdit()">✥ Edit Layout</button>
+                        <button class="etool" id="layout-reset-btn" data-click="resetLayoutPositions()" style="display:none">↺ Reset</button>
                         <span class="sep-dot"></span>
-                        <button class="etool" onclick="bringForward()" title="Bring Forward">⏫ Fwd</button>
-                        <button class="etool" onclick="sendBackward()" title="Send Backward">⏬ Back</button>
-                        <button class="etool" onclick="bringToFront()" title="Bring to Front">⤒ Front</button>
-                        <button class="etool" onclick="sendToBack()" title="Send to Back">⤓ Back</button>
+                        <button class="etool" data-click="bringForward()" title="Bring Forward">⏫ Fwd</button>
+                        <button class="etool" data-click="sendBackward()" title="Send Backward">⏬ Back</button>
+                        <button class="etool" data-click="bringToFront()" title="Bring to Front">⤒ Front</button>
+                        <button class="etool" data-click="sendToBack()" title="Send to Back">⤓ Back</button>
                         <span class="sep-dot"></span>
-                        <button class="etool" onclick="saveLayout()">💾 Save Layout</button>
-                        <button class="etool" onclick="document.getElementById('layout-file-input').click()">📂 Load Layout</button>
-                        <input type="file" id="layout-file-input" accept=".json" style="display:none" onchange="loadLayoutFromFile(event)">
+                        <button class="etool" data-click="saveLayout()">💾 Save Layout</button>
+                        <button class="etool" data-click="__pickLayout()">📂 Load Layout</button>
+                        <input type="file" id="layout-file-input" accept=".json" style="display:none" data-change="loadLayoutFromFile(event)">
                         <span class="layout-hint" id="layout-hint" style="display:none">Drag · resize · rotate</span>
                     </div>
                 </div>
@@ -708,10 +708,10 @@
                     </div>
                     <div class="edit-toolbar" id="edit-toolbar">
                         <span style="font-size:11px;font-family:var(--mono);color:var(--muted);padding:2px 4px">Edit Tools:</span>
-                        <button class="etool" id="tool-vertex" onclick="setTool('vertex')">✏️ Vertices</button>
-                        <button class="etool" onclick="deleteSelected()">🗑 Delete</button>
-                        <button class="etool" onclick="undoEdit()">↩ Undo</button>
-                        <button class="etool" onclick="saveEdits()">💾 Save Edits</button>
+                        <button class="etool" id="tool-vertex" data-click="setTool('vertex')">✏️ Vertices</button>
+                        <button class="etool" data-click="deleteSelected()">🗑 Delete</button>
+                        <button class="etool" data-click="undoEdit()">↩ Undo</button>
+                        <button class="etool" data-click="saveEdits()">💾 Save Edits</button>
                     </div>
                 </div>
 
@@ -724,7 +724,7 @@
                         <div class="fg"><label>Area line (blank = auto)</label><input type="text" id="comp-area" placeholder="e.g. Area: 73.61 ha"></div>
                         <div class="comp-sec">Legend</div>
                         <div class="fg"><label>Legend Title</label><input type="text" id="comp-legend" value="Legend"></div>
-                        <div class="fg"><label>Legend rows <button type="button" class="etool" id="comp-rows-refresh" onclick="refreshComposerTexts()" title="Load each legend row from the current map">↻ Rows</button></label>
+                        <div class="fg"><label>Legend rows <button type="button" class="etool" id="comp-rows-refresh" data-click="refreshComposerTexts()" title="Load each legend row from the current map">↻ Rows</button></label>
                             <div id="comp-legend-rows"><div class="comp-rows-hint">Press ↻ to load every legend row for editing (blank = auto).</div></div>
                         </div>
                         <div class="fg hidden" id="comp-panels-fg"><label>Panel headings (thesis map only)</label>
@@ -740,7 +740,7 @@
                         </div>
                         <div class="comp-sec">Render</div>
                         <div class="fg"><label>Module (render logic)</label>
-                            <select id="comp-module" onchange="updateCompHint()">
+                            <select id="comp-module" data-change="updateCompHint()">
                                 <option value="A">A — Boundary</option>
                                 <option value="B">B — Segmented</option>
                                 <option value="C">C — Sample Plot</option>
@@ -753,11 +753,11 @@
                             </select>
                             <div class="comp-mod-hint" id="comp-mod-hint"></div>
                         </div>
-                        <button class="run-btn" style="width:100%" onclick="doCompose()">🎨 Re-Render Map</button>
+                        <button class="run-btn" style="width:100%" data-click="doCompose()">🎨 Re-Render Map</button>
                         <div id="comp-status" style="font-size:11px;color:var(--muted);font-family:var(--mono);min-height:16px"></div>
                         <div class="sep"></div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button class="etool" onclick="window.open(document.getElementById('out-img').src,'_blank')">🖼 Open Full PNG</button>
+                            <button class="etool" data-click="__openOutImage()">🖼 Open Full PNG</button>
                             <a id="dl-btn2" class="etool" style="text-decoration:none">📦 Download ZIP</a>
                         </div>
 
@@ -787,7 +787,7 @@
                                 <input type="number" id="export-page-h" value="11.69" step="0.1" min="4">
                             </div>
                         </div>
-                        <button class="run-btn" style="width:100%;margin-top:6px" onclick="exportLayout()">
+                        <button class="run-btn" style="width:100%;margin-top:6px" data-click="exportLayout()">
                             ⬇ Export Official Map
                         </button>
                         <div id="export-status" style="font-size:11px;color:var(--muted);font-family:var(--mono);min-height:16px;margin-top:4px"></div>
@@ -797,18 +797,18 @@
                 <div class="preview-foot">
                     <div class="run-meta" id="run-meta">Metrics: Ready</div>
                     <div style="display:flex;gap:8px;align-items:center">
-                        <button type="button" id="view-full-btn" onclick="viewFullMap()" style="display:none;padding:6px 13px;border-radius:6px;background:var(--blue-soft);border:1px solid var(--blue-line);color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .2s">🔍 Full View</button>
+                        <button type="button" id="view-full-btn" data-click="viewFullMap()" style="display:none;padding:6px 13px;border-radius:6px;background:var(--blue-soft);border:1px solid var(--blue-line);color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:all .2s">🔍 Full View</button>
                         <a id="dl-btn" class="dl-btn" href="#">⬇ Download ZIP</a>
                     </div>
                 </div>
 
                 <!-- Full-map modal -->
-                <div id="map-modal" role="dialog" aria-modal="true" aria-label="Full map view" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;flex-direction:column;gap:12px" onclick="closeMapModal()">
-                    <div style="position:relative;max-width:95vw;max-height:92vh;overflow:auto" onclick="event.stopPropagation()">
+                <div id="map-modal" role="dialog" aria-modal="true" aria-label="Full map view" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;flex-direction:column;gap:12px" data-click="closeMapModal()">
+                    <div style="position:relative;max-width:95vw;max-height:92vh;overflow:auto" data-click="__stopBubble(event)">
                         <img id="modal-img" alt="Full map output" style="max-width:100%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.6);display:block">
                     </div>
                     <div style="display:flex;gap:10px">
-                        <button class="modal-close" onclick="closeMapModal()">✕ Close</button>
+                        <button class="modal-close" data-click="closeMapModal()">✕ Close</button>
                         <a id="modal-dl-btn" href="#" download style="padding:8px 20px;border-radius:20px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font-size:12px;cursor:pointer;font-family:var(--sans);font-weight:600;text-decoration:none">⬇ Download PNG</a>
                     </div>
                 </div>
@@ -820,7 +820,9 @@
     <script defer src="/static/js/theme.js?v=20260929-3"></script>
     <script defer src="/static/js/prefetch.js?v=20260929-2"></script>
     <script defer src="/static/js/crosssite.js?v=20261005-1"></script>
-    <script defer src="/static/js/app.js?v=20260929-8"></script>
+    <script defer src="/static/js/actions.js?v=20261005-1"></script>
+    <script defer src="/static/js/handlers.js?v=20261005-1"></script>
+        <script defer src="/static/js/app.js?v=20260929-8"></script>
     <script defer src="/static/js/dock.js?v=20260930-1"></script>
     <script defer src="/static/js/dock-resize.js?v=20260930-1"></script>
     <script defer src="/static/js/boot.js?v=20260929-1"></script>

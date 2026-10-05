@@ -49,14 +49,14 @@
             </div>
             <p class="login-sub">Forestry PSC Preparation · one shared account</p>
 
-            <form id="login-form" autocomplete="on" onsubmit="doLogin();return false;">
+            <form id="login-form" autocomplete="on" data-submit="doLogin()">
                 <div class="login-field">
                     <label class="login-label" for="login-inp">Username</label>
                     <input type="text" id="login-inp" class="input" name="username" placeholder="e.g. student123" maxlength="40"
                            autocomplete="username" autocapitalize="none" autocorrect="off"
                            spellcheck="false" enterkeyhint="next"
                            aria-describedby="login-hint" autofocus
-                           oninput="_checkUsernameHint(this.value)">
+                           data-input="_checkUsernameHint(this.value)">
                     <p id="login-hint" role="status" aria-live="polite"></p>
                 </div>
 
@@ -67,7 +67,7 @@
                                autocomplete="current-password" autocapitalize="none" autocorrect="off"
                                spellcheck="false" enterkeyhint="go"
                                aria-label="Password">
-                        <button type="button" class="pw-toggle" id="pw-toggle" onclick="togglePw()"
+                        <button type="button" class="pw-toggle" id="pw-toggle" data-click="togglePw()"
                                 aria-label="Show password" aria-pressed="false">
                             <svg id="pw-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -116,6 +116,8 @@
 
     <script defer src="/static/js/theme.js?v=20260929-3"></script>
     <script defer src="/static/js/prefetch.js?v=20260929-2"></script>
+    <script defer src="/static/js/actions.js?v=20261005-1"></script>
+    <script defer src="/static/js/handlers.js?v=20261005-1"></script>
     <script defer src="/static/js/login.js?v=20260929-3"></script>
 </body>
 </html>
