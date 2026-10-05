@@ -266,6 +266,48 @@ def test_failed_sso_handoff_still_shows_the_fallback_to_a_signed_out_visitor():
     assert b"/login" in resp.data, "the fallback page must offer a way to sign in"
 
 
+def test_the_forestry_badge_carries_the_username_the_handoff_needs():
+    """The hand-off depends on data-username being populated.
+
+    crosssite.js reads it to decide whether this visitor is signed in, and an
+    empty value makes it fall through to the plain link - which drops them on
+    the sibling app's sign-in page despite being authenticated here. Jinja
+    renders an undefined template variable as "", so a route that forgot to
+    pass `username` into render_template disabled single sign-on with no error
+    anywhere: the link still worked, it just quietly lost the session.
+    """
+    client = app.test_client()
+    with client.session_transaction() as sess:
+        sess["username"] = "badge-tester"
+    resp = client.get("/")
+    assert resp.status_code == 200, f"signed-in visitor should reach the studio: {resp.status_code}"
+    assert b'data-username="badge-tester"' in resp.data, (
+        "header badge lost the username, so the hand-off to Forestry PSC is skipped"
+    )
+
+
+def test_the_handoff_does_not_open_a_tab_it_cannot_navigate():
+    """window.open(..., 'noopener') returns null, by spec.
+
+    crosssite.js needs a live handle to deliver the hand-off token it fetches
+    to the new tab. Opened with noopener the handle is null, the guard right
+    after it returns early, and the visitor lands on the sibling app's sign-in
+    page while signed in here - again with no error to notice. The protection
+    noopener gives is kept by severing opener on the returned handle instead.
+    """
+    import re as _re
+    from pathlib import Path as _Path
+
+    src = (_Path(__file__).parent / "static" / "js" / "crosssite.js").read_text()
+    calls = _re.findall(r"window\.open\(([^)]*)\)", src)
+    assert calls, "expected the badge to open a tab"
+    for args in calls:
+        assert "noopener" not in args, (
+            "window.open(... noopener) yields a null handle, so the fetched "
+            f"token can never be applied to the tab: window.open({args.strip()})"
+        )
+
+
 def test_health_routes():
 
     client = app.test_client()

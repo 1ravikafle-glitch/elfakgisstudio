@@ -27,17 +27,42 @@
         if (!username) return; // not signed in: the plain link is correct
 
         e.preventDefault();
-        var w = window.open(FORESTRY + '/desktop/', '_blank', 'noopener,noreferrer');
-        if (w) w.opener = null;
+
+        // Open the tab while the click is still a user gesture. Awaiting the
+        // hand-off first would lose the gesture and the popup blocker would
+        // eat the window.
+        //
+        // The feature string must NOT contain "noopener": per spec that makes
+        // window.open return null, and a null handle means the token we fetch
+        // can never be applied to the tab, so it would sit on the sign-in page
+        // with nothing to show for the request. Opening plainly and severing
+        // opener ourselves gives identical protection with a usable handle.
+        var w = window.open('', '_blank');
+        if (!w) return;             // popup blocked: nothing sensible to do
+        try { w.opener = null; } catch (err) { /* already severed */ }
+
+        // Paint the blank tab so it does not sit as a white void for a moment.
+        try {
+            w.document.open();
+            w.document.write('<!doctype html><meta charset="utf-8">' +
+                '<title>Opening Forestry PSC</title>' +
+                '<body style="font:14px system-ui,sans-serif;padding:2rem;color:#666">' +
+                'Signing you in...</body>');
+            w.document.close();
+        } catch (err) { /* nothing to paint */ }
 
         fetch('/sso/forestry-handoff', { credentials: 'same-origin' })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (d) {
-                if (!w || !d || !d.token) return;
+                if (!w || w.closed) return;
                 w.location.replace(
-                    FORESTRY + '/auth/sso/exchange?t=' + encodeURIComponent(d.token)
+                    d && d.token
+                        ? FORESTRY + '/auth/sso/exchange?t=' + encodeURIComponent(d.token)
+                        : FORESTRY + '/desktop/'
                 );
             })
-            .catch(function () { /* plain destination already open */ });
+            .catch(function () {
+                if (w && !w.closed) w.location.replace(FORESTRY + '/desktop/');
+            });
     });
 })();

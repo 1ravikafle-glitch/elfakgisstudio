@@ -87,11 +87,21 @@ def home():
     """The studio itself. Never renders a login form: signed-out visitors
     are sent to the dedicated /login page, so a hard refresh while signed in
     cannot flash the login screen."""
-    if not _signed_in_username():
+    username = _signed_in_username()
+    if not username:
         return redirect("/login")
     # Mint the CSRF token here so the app shell can echo it into a meta tag.
+    #
+    # username is not optional here. The header badge renders
+    # data-username="{{ username }}", and crosssite.js reads an empty value as
+    # "signed out" and skips the hand-off. Jinja renders an undefined variable
+    # as "", so leaving it out of the context disabled single sign-on back to
+    # the sibling app without a single error - the link still worked, it just
+    # quietly dropped the signed-in visitor on the Prep sign-in page.
     from elfakgis.core.csrf import generate_csrf_token
-    return render_template("index.html", csrf_token=generate_csrf_token())
+    return render_template(
+        "index.html", csrf_token=generate_csrf_token(), username=username
+    )
 
 
 @pages_bp.route("/login")
