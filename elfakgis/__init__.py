@@ -247,20 +247,36 @@ def create_app():
         # runs, so ask the request rather than the environment.
         if request.is_secure or request.headers.get("X-Forwarded-Proto") == "https":
             resp.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
-        # Content-Security-Policy. The app loads exactly one third-party
-        # script (Leaflet, from unpkg) and the rest is same-origin, so the
-        # policy can be strict. 'unsafe-inline' for styles is required by
-        # Leaflet's own CSS-in-JS and by the map's inline style attributes;
-        # script is NOT allowed inline anywhere, which is the part that
-        # actually neutralises an injected <script> or inline handler.
+        # Content-Security-Policy.
+        #
+        # Two CDNs are needed, not one. Leaflet and Leaflet-Geoman come from
+        # unpkg; JSZip, SheetJS and html2canvas come from cdnjs. cdnjs was
+        # missing from script-src, which did not throw and did not look broken:
+        # the three libraries are loaded on demand by app.js, so the page
+        # rendered fine and every file-dependent action silently did nothing.
+        # "Select Excel / CSV" parsed nothing because SheetJS never loaded,
+        # and Download ZIP produced no archive because JSZip never loaded.
+        #
+        # Allowing the host is safe because app.js pins all four with an SRI
+        # hash and sets crossOrigin, so a CDN that serves different bytes fails
+        # the integrity check instead of executing. 'unsafe-inline' for styles
+        # is required by Leaflet's CSS-in-JS and by inline style attributes;
+        # script is still NOT allowed inline anywhere, which is the part that
+        # neutralises an injected <script> or an inline handler.
+        #
+        # connect-src needs both CDNs too: prefetch.js warms them with fetch(),
+        # and a blocked warm means the library is only discovered at the moment
+        # the user clicks the button that needs it.
         csp = (
             "default-src 'self'; "
-            "script-src 'self' https://unpkg.com; "
-            "style-src 'self' 'unsafe-inline' https://unpkg.com; "
+            "script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' https://unpkg.com "
+            "https://cdnjs.cloudflare.com; "
             "img-src 'self' data: blob: https://*.basemaps.cartocdn.com "
             "https://server.arcgisonline.com https://*.tile.openstreetmap.org; "
             "font-src 'self' data:; "
-            "connect-src 'self' https://*.basemaps.cartocdn.com "
+            "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com "
+            "https://*.basemaps.cartocdn.com "
             "https://server.arcgisonline.com https://*.tile.openstreetmap.org; "
             "worker-src 'self' blob:; "
             "object-src 'none'; "

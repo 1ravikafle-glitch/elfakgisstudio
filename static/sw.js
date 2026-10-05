@@ -47,6 +47,7 @@ const SHELL = [
     '/static/js/dock.js?v=20260930-1',
     '/static/js/dock-resize.js?v=20260930-1',
     '/static/js/prefetch.js?v=20260929-2',
+    '/static/js/crosssite.js?v=20261005-1',
     '/static/js/boot.js?v=20260929-1',
     '/static/js/login.js?v=20260929-3',
 ];

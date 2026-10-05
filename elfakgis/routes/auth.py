@@ -182,6 +182,23 @@ def _already_signed_in():
         return False
 
 
+@auth_bp.route("/sso/forestry-handoff")
+@_login_required
+def sso_forestry_handoff():
+    """
+    Mint a short-lived token that signs the visitor in to Forestry PSC.
+
+    The reverse of /sso/exchange. The sibling app keeps its session in
+    localStorage, which a redirect cannot populate, so it accepts a token at
+    its own /auth/sso/exchange and writes the session itself.
+    """
+    username = session.get("username") or ""
+    token = autshared.mint_forestry_token(username) if username else None
+    if not token:
+        return jsonify({"ok": False, "error": "single sign-on unavailable"}), 503
+    return jsonify({"ok": True, "token": token, "expires_in": 300})
+
+
 @auth_bp.route("/sso/exchange", methods=["GET", "POST"])
 @_rate_limit(limit=30, window=60)
 def sso_exchange():

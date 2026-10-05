@@ -295,6 +295,35 @@ def _b64d(text: str) -> bytes:
     return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
 
 
+# Audience for the reverse handoff: a token naming the Forestry app, so a
+# signed-in GIS session can open it already authenticated. Distinct from
+# SSO_AUDIENCE so neither direction's token can be replayed as the other.
+FORESTRY_AUDIENCE = os.environ.get("SSO_AUDIENCE_OUTBOUND") or "forestrypscprep"
+
+
+def mint_forestry_token(username: str, is_admin: bool = False) -> Optional[str]:
+    """
+    Mint a short-lived token the Forestry app will accept as itself.
+
+    The sibling app keeps its session in localStorage, so it cannot be handed a
+    session by redirect alone; it accepts this token at /auth/sso/exchange,
+    writes its own session and navigates on. Lives in a URL, so it is short.
+    """
+    secret = _sso_secret()
+    if secret is None or not username:
+        return None
+    payload = {
+        "u": username,
+        "a": 1 if is_admin else 0,
+        "aud": FORESTRY_AUDIENCE,
+        "iat": int(time.time()),
+        "exp": int(time.time()) + min(SSO_MAX_TTL or 300, 300),
+    }
+    body = _b64e(json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8"))
+    sig = _b64e(hmac.new(secret, body.encode("ascii"), hashlib.sha256).digest())
+    return f"{body}.{sig}"
+
+
 def verify_sso_token(token: str) -> Optional[dict]:
     """
     Validate a handoff token minted by Forestry PSC.
