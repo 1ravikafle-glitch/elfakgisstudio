@@ -493,12 +493,52 @@ def render_a4(path, poly_gdf=None, line_gdf=None, pts_gdf=None,
               title=None, subtitle=None, module=None,
               legend_title=None, area_ha=None, area_text=None,
               legend_labels=None, show_point_labels=True,
-              slope_areas=None, dpi=DPI):
-    """Render the reference-style A4 survey map. Returns the path."""
+              slope_areas=None, dpi=DPI, orientation="auto"):
+    """Render the reference-style A4 survey map. Returns the path.
+
+    orientation: 'auto' (default) picks the sheet to match the data —
+        wide geometries render on A4 landscape, tall/square on A4
+        portrait — so the saved PNG has the same natural shape as the
+        interactive preview and is never unnaturally folded into a thin
+        strip. Pass 'portrait' or 'landscape' to force a sheet.
+    """
     gdfs = [g for g in (poly_gdf, line_gdf, pts_gdf)
             if g is not None and not g.empty]
 
-    fig = plt.figure(figsize=(FIG_W, FIG_H), dpi=dpi)
+    # ── decide sheet orientation BEFORE creating the figure ──
+    orient = str(orientation or "auto").strip().lower()
+    if orient not in ("auto", "portrait", "landscape"):
+        orient = "auto"
+    if orient == "auto":
+        try:
+            _b = None
+            for g in gdfs:
+                try:
+                    b = g.total_bounds
+                except Exception:
+                    continue
+                if b is None or len(b) != 4 or not np.all(np.isfinite(b)):
+                    continue
+                if _b is None:
+                    _b = list(b)
+                else:
+                    _b[0] = min(_b[0], b[0])
+                    _b[1] = min(_b[1], b[1])
+                    _b[2] = max(_b[2], b[2])
+                    _b[3] = max(_b[3], b[3])
+            if _b is not None:
+                _dw = max(_b[2] - _b[0], 0.0)
+                _dh = max(_b[3] - _b[1], 0.0)
+                # wide data → landscape sheet, tall/square → portrait.
+                # Threshold 1.0 = exactly what the preview shows.
+                orient = "landscape" if _dw > _dh else "portrait"
+            else:
+                orient = "portrait"
+        except Exception:
+            orient = "portrait"
+    fig_w, fig_h = (11.69, 8.27) if orient == "landscape" else (FIG_W, FIG_H)
+
+    fig = plt.figure(figsize=(fig_w, fig_h), dpi=dpi)
     fig.patch.set_facecolor("white")
     _draw_neatline(fig)
 
@@ -545,7 +585,7 @@ def render_a4(path, poly_gdf=None, line_gdf=None, pts_gdf=None,
         minx, maxx, miny, maxy = cx0 - 10, cx0 + 10, cy0 - 10, cy0 + 10
         data_w = data_h = 20.0
 
-    ax_aspect = AX[2] * FIG_W / (AX[3] * FIG_H)
+    ax_aspect = AX[2] * fig_w / (AX[3] * fig_h)
     margin = max(data_w, data_h) * 0.10
     dw, dh = data_w + 2 * margin, data_h + 2 * margin
     if dw / dh > ax_aspect:

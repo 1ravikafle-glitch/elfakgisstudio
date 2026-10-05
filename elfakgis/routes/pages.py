@@ -197,8 +197,12 @@ def about_page():
 <h2>Open the Application</h2>
 <p><a href="/" class="cta">🌲 Launch Elfak GIS Studio</a></p>
 
+<h2>Creation</h2>
+<p>Elfak GIS Studio is designed and built by <a href="https://ravikafle.com.np" target="_blank" rel="noopener">ravikafle.com.np</a>.</p>
+
 <footer>
-  <p>Elfak GIS Studio · <a href="https://elfakgisstudio.onrender.com/">elfakgisstudio.onrender.com</a></p>
+  <p>© 2026 Elfak GIS Studio · <a href="https://elfakgisstudio.onrender.com/">elfakgisstudio.onrender.com</a> · Created by <a href="https://ravikafle.com.np" target="_blank" rel="noopener">ravikafle.com.np</a></p>
+  <p><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/cookies">Cookies</a> · <a href="/about">About</a></p>
   <p>Keywords: elfakgis · elfakgisstudio · forest gis nepal · slope analysis · compartment mapping · survey points · forestry gis</p>
 </footer>
 </body>
@@ -207,11 +211,111 @@ def about_page():
 def favicon():
     return send_from_directory(current_app.static_folder, "favicon.ico", mimetype="image/x-icon")
 
+_LEGAL_STYLE = (
+    "body{font-family:system-ui,sans-serif;max-width:900px;margin:0 auto;padding:20px 24px;"
+    "color:#1a2e22;background:#f0f8f3;line-height:1.7}"
+    "h1{color:#059669;font-size:2em;margin-bottom:8px}"
+    "h2{color:#065f46;border-bottom:2px solid #34d399;padding-bottom:6px;margin-top:32px}"
+    "footer{margin-top:48px;padding-top:16px;border-top:1px solid #b7eacf;"
+    "color:#6b9880;font-size:13px}"
+)
+
+_LEGAL_FOOTER = (
+    "<footer>"
+    "<p>© 2026 Elfak GIS Studio · "
+    '<a href="https://elfakgisstudio.onrender.com/">elfakgisstudio.onrender.com</a> · Created by '
+    '<a href="https://ravikafle.com.np" target="_blank" rel="noopener">ravikafle.com.np</a></p>'
+    '<p><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · '
+    '<a href="/cookies">Cookies</a> · <a href="/about">About</a></p>'
+    "</footer>"
+)
+
+
+def _legal_page(title, body_html):
+    return Response(
+        "<!DOCTYPE html><html lang=\"en\"><head>"
+        "<meta charset=\"UTF-8\">"
+        '<meta name="viewport" content="width=device-width,initial-scale=1.0">'
+        f"<title>{html.escape(title)} — Elfak GIS Studio</title>"
+        '<meta name="robots" content="index, follow">'
+        f"<style>{_LEGAL_STYLE}</style>"
+        "</head><body>"
+        f"<h1>{html.escape(title)}</h1>"
+        f"{body_html}<p><a href=\"/\">← Back to Elfak GIS Studio</a></p>{_LEGAL_FOOTER}"
+        "</body></html>",
+        mimetype="text/html",
+    )
+
+
+@pages_bp.route("/privacy")
+def privacy_page():
+    return _legal_page("Privacy Policy", """
+<p><strong>Last updated: 2026.</strong> Elfak GIS Studio processes the files you upload
+(Excel, CSV, shapefiles, GeoTIFF) to run the requested GIS analysis and render your maps.</p>
+<h2>What we store</h2>
+<ul>
+<li>Your account username and login session (including an optional stay-signed-in cookie).</li>
+<li>Your uploaded inputs and generated outputs (shapefiles, maps, run history) tied to your account.</li>
+<li>Basic operational logs needed for security, rate limiting, and reliability.</li>
+</ul>
+<h2>What we do not do</h2>
+<ul>
+<li>We do not sell your data or share your uploads with advertisers.</li>
+<li>We do not use your forest survey data for any purpose other than running your analysis.</li>
+</ul>
+<h2>Your control</h2>
+<p>You can delete individual runs or clear your history from the Run History drawer.
+Sign out any time to end your session. For questions, contact the creator via
+<a href="https://ravikafle.com.np" target="_blank" rel="noopener">ravikafle.com.np</a>.</p>
+""")
+
+
+@pages_bp.route("/terms")
+def terms_page():
+    return _legal_page("Terms of Use", """
+<p><strong>Last updated: 2026.</strong> By using Elfak GIS Studio you agree to these terms.</p>
+<h2>Service</h2>
+<ul>
+<li>Elfak GIS Studio is a free web-based GIS for forestry mapping and analysis.</li>
+<li>Outputs (areas, slopes, maps) are computed from your inputs — always verify
+critical boundaries and areas against field records before official use.</li>
+</ul>
+<h2>Acceptable use</h2>
+<ul>
+<li>Upload only data you have the right to process.</li>
+<li>Do not abuse the service (scraping, credential sharing, attacks, unlawful content).</li>
+</ul>
+<h2>Availability</h2>
+<p>The service is provided "as is" without warranties. We may rate-limit, suspend
+abusive accounts, or change features to keep the service reliable.</p>
+""")
+
+
+@pages_bp.route("/cookies")
+def cookies_page():
+    return _legal_page("Cookie Policy", """
+<p><strong>Last updated: 2026.</strong> Elfak GIS Studio uses a small number of cookies
+and browser storage entries to keep you signed in and remember your preferences.</p>
+<h2>Cookies we use</h2>
+<ul>
+<li><strong>Session cookie</strong> — keeps you signed in while you use the studio.</li>
+<li><strong>Stay-signed-in cookie</strong> — optional long-lived login so a hard refresh
+lands straight on the app.</li>
+<li><strong>Theme preference</strong> — remembers your light/dark appearance choice.</li>
+</ul>
+<h2>Managing cookies</h2>
+<p>You can clear cookies in your browser settings. Note that signing out or clearing
+cookies will sign you out of the studio.</p>
+""")
+
 @pages_bp.route("/robots.txt")
 def robots_txt():
     return Response("""User-agent: *
 Allow: /
 Allow: /about
+Allow: /privacy
+Allow: /terms
+Allow: /cookies
 Allow: /sitemap.xml
 Disallow: /upload
 Disallow: /run_g
@@ -230,6 +334,12 @@ def sitemap_xml():
        <priority>1.0</priority><changefreq>weekly</changefreq></url>
   <url><loc>https://elfakgisstudio.onrender.com/about</loc>
        <priority>0.9</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://elfakgisstudio.onrender.com/privacy</loc>
+       <priority>0.3</priority><changefreq>yearly</changefreq></url>
+  <url><loc>https://elfakgisstudio.onrender.com/terms</loc>
+       <priority>0.3</priority><changefreq>yearly</changefreq></url>
+  <url><loc>https://elfakgisstudio.onrender.com/cookies</loc>
+       <priority>0.3</priority><changefreq>yearly</changefreq></url>
 </urlset>""", mimetype="application/xml")
 
 

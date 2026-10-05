@@ -255,13 +255,16 @@ def render_map(path, poly_gdf=None, line_gdf=None, pts_gdf=None,
                title=None, slope_mode=False, summary_rows=None,
                slope_areas=None, subtitle=None, legend_title=None,
                area_ha=None, area_text=None, legend_labels=None,
-               show_point_labels=True, module=None):
+               show_point_labels=True, module=None, orientation="auto"):
     """Reference-style A4 survey map (neatline, graticule, titles, north
     star, legend, true scale bar, projection block — fixed non-overlap slots).
 
     All text comes from arguments so /compose and /export_layout can
     re-render user-edited text. Extra legacy params (safe_rect,
     layout_state, summary_rows) are accepted for compatibility.
+    orientation: 'auto' (default) matches the sheet to the data shape —
+        landscape data → A4 landscape, portrait data → A4 portrait — so
+        the saved file looks exactly like the preview without folding.
     """
     mod = module or ("F" if slope_mode else None)
     return _render_a4(path, poly_gdf=poly_gdf, line_gdf=line_gdf,
@@ -272,7 +275,7 @@ def render_map(path, poly_gdf=None, line_gdf=None, pts_gdf=None,
                       area_ha=area_ha, area_text=area_text,
                       legend_labels=legend_labels,
                       show_point_labels=show_point_labels,
-                      slope_areas=slope_areas)
+                      slope_areas=slope_areas, orientation=orientation)
 
 
 def __getattr__(name):

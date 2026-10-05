@@ -195,6 +195,9 @@ def compose_map(run_id):
         show_point_labels = (data.get("point_labels", "auto") != "hide")
         label_col = (data.get("label_col") or "").strip() or None
         module = (data.get("module") or "").strip() or None
+        orientation = (data.get("orientation") or "auto").strip().lower()
+        if orientation not in ("auto", "portrait", "landscape"):
+            orientation = "auto"
         if label_col is None:
             label_col = "Comp_ID" if "Comp_ID" in pg.columns else None
         point_label_col = None
@@ -210,7 +213,8 @@ def compose_map(run_id):
                    title=title, subtitle=subtitle, module=module,
                    legend_title=legend_title, area_text=area_text,
                    legend_labels=legend_labels,
-                   show_point_labels=show_point_labels)
+                   show_point_labels=show_point_labels,
+                   orientation=orientation)
         return jsonify({"ok": True, "png": f"/outputs/{run_id}/output.png?t={uuid.uuid4().hex[:8]}"})
     except Exception as e:
         return jsonify({"error": f"Compose error: {e}"}), 500
@@ -442,6 +446,9 @@ def export_layout():
         show_point_labels = (data.get("point_labels", "auto") != "hide")
         label_col = (data.get("label_col") or "").strip() or None
         module = (data.get("module") or "").strip() or None
+        orientation = (data.get("orientation") or "auto").strip().lower()
+        if orientation not in ("auto", "portrait", "landscape"):
+            orientation = "auto"
         if label_col is None:
             label_col = "Comp_ID" if "Comp_ID" in pg.columns else None
         point_label_col = None
@@ -458,7 +465,8 @@ def export_layout():
                    title=title, subtitle=subtitle, module=module,
                    legend_title=legend_title, area_text=area_text,
                    legend_labels=legend_labels,
-                   show_point_labels=show_point_labels)
+                   show_point_labels=show_point_labels,
+                   orientation=orientation)
         return send_file(pp, as_attachment=True,
                          download_name=f"elfak_map_{run_id}.png",
                          mimetype="image/png")
